@@ -1,0 +1,20 @@
+import FWCore.ParameterSet.Config as cms
+
+mcEvtPlane = cms.EDProducer("MCEvtPlaneProducer",
+	trackEta = cms.untracked.InputTag('QWEvent', "eta"),
+        trackPhi = cms.untracked.InputTag('QWEvent', "phi"),
+	trackPt = cms.untracked.InputTag('QWEvent', "pt"),
+	trackWeight = cms.untracked.InputTag('QWEvent', "weight"),
+	trackCharge = cms.untracked.InputTag('QWEvent', "charge"),
+	vertexZ = cms.untracked.InputTag('QWEvent', "vz"),
+        eventRP = cms.untracked.InputTag('QWHIEvent', "EP"),
+        eventNcoll = cms.untracked.InputTag('QWHIEvent', "Ncoll"),
+        eventNpart = cms.untracked.InputTag('QWHIEvent', "Npart"),
+        loadDB = cms.bool(False),
+        eventb = cms.untracked.InputTag('QWHIEvent', "b"),
+        flatnvtxbins = cms.int32(10),
+        flatminvtx = cms.double(-25.0),
+        flatdelvtx = cms.double(5.0),
+        FlatOrder = cms.untracked.int32(9),
+        NumFlatBins = cms.untracked.int32(40)
+                            )
