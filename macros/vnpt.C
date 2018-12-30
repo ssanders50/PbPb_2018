@@ -1,0 +1,56 @@
+#ifndef VNPT
+#define VNPT
+#include <signal.h>
+#include "Framework.h"
+#include "TGraphErrors.h"
+#include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
+using namespace hi;
+using namespace std;
+static volatile int keepRunning = 1;
+void intHandler(int dummy){
+  keepRunning = 0;
+}
+static const int nptbins = 17;
+static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0,
+			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10.};
+
+TGraphErrors * vnpt(){
+  int order = 2;
+  Framework * f = new Framework();
+  for(int i = 0; i<nptbins; i++) {
+    int iroi = f->SetROIRange(order, 25, 30, -0.4, 0.0, ptbins[i],ptbins[i+1]);
+    f->SetROIEP(i,HFp2,HFm2,trackmid2);
+  }
+  int count = 0;
+  int partcount = 0;
+  for(int i = 0; i<f->GetN(); i++) {
+    signal(SIGINT,intHandler);
+    if(keepRunning == 0) break;
+    f->AddEvent(i);
+    ++count;
+    ++partcount;
+    if(partcount == 10000) {
+      cout<<count<<endl;
+      partcount = 0;
+    }
+  }
+  cout<<"Processed "<<count<<" events"<<endl;
+  double x[17];
+  double y[17];
+  for(int i = 0; i<nptbins; i++) {
+    x[i] = f->GetAvPt(i);
+    y[i] = f->GetqnA(i)/f->GetqABC(i);
+    std::cout<<i<<"\t"<<x[i]<<"\t"<<y[i]<<std::endl;
+  }
+  TGraphErrors * g = new TGraphErrors(17,x,y,0,0);
+  TH1D * h = new TH1D("h","h",100,0,12);
+  h->SetMinimum(0);
+  h->SetMaximum(0.4);
+  h->Draw();
+  g->SetMarkerStyle(20);
+  g->SetMarkerColor(kBlue);
+  g->Draw("p");
+  return g ;
+}
+
+#endif
