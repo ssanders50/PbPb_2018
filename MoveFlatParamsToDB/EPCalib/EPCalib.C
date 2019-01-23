@@ -135,6 +135,7 @@ double ptcnt_[NumEPNames][8000];
 int ptcnt[NumEPNames];
 TTree * EPtree;
 float EPAngs[NumEPNames];
+float EPOrig[NumEPNames];
 int nentries;
 int totentries;
 int ncnt;
@@ -147,14 +148,16 @@ int ncnt;
 FILE * save;
 string saveName;
 string epsaveName;
+string ressaveName;
 #include "src/Loop0.h"
 #include "src/Loop1.h"
 #include "src/Loop2.h"
 #include "src/Loop3.h"
 #include "src/rescor.h"
-void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/rfs/sanders/tmpPbPb", string epsave="/rfs/sanders/EPPbPb.root",string foffsave="/rfs/sanders/foff.root"){
+void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "tmp.lis",  string ssave="/rfs/sanders/tmpPbPb", string epsave="/rfs/sanders/EPPbPb.root",string foffsave="/rfs/sanders/foff.root", string ressave="Rescor"){
   saveName=ssave;
   epsaveName=epsave;
+  ressaveName = "RescorSave/Rescor_"+to_string(minRun)+"_"+to_string(maxRun);
   minRun_ = minRun;
   maxRun_ = maxRun;
   cout<<"minRun: "<<minRun_<<endl;
@@ -164,7 +167,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
   int Obins = 0;
   char buf[200];
   FILE * list;
-  list = fopen("tmp.lis","r");
+  list = fopen(inList.data(),"r");
   TString fnames[8000];
   memset(buf,0,sizeof(buf));
   int lcnt = 0;
@@ -188,6 +191,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
   EPtree->Branch("NtrkOff", &EPntrk, "noff/i");
   EPtree->Branch("Run",&EPrun,"run/i");
   EPtree->Branch("EPAngs",&EPAngs,epnames.Data());
+  EPtree->Branch("EPOrig",&EPOrig,epnames.Data());  
   hcent = new TH1D("hcent","centrality",200,0,100);
   int minr = 0;
   int maxr = 10000;
@@ -196,7 +200,6 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
   hvtx = new TH1D("hvtx","vertex",200,-30,30);
   hflatbins = new TH1D("hflatbins","hflatbins",100,0,100);
   TFile * tf = new TFile(fnames[0].Data(),"read");
-  cout<<tf->GetName()<<endl;
   TH1D * fparams = (TH1D *)tf->Get("evtPlaneCalibTree/fparams");
   TH1I * iparams = (TH1I *)tf->Get("evtPlaneCalibTree/iparams");
   minet_ = fparams->GetBinContent(1);
@@ -334,6 +337,24 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
     tf = new TFile(fnames[findx].Data(),"read");
     if(tf->IsZombie())                 {cout<<"ZOMBIE:    " <<fnames[findx].Data()<<endl; continue;}
     if(tf->TestBit(TFile::kRecovered)) {cout<<"RECOVERED: " <<fnames[findx].Data()<<endl; continue;}
+
+    tree = (TTree *) tf->Get("evtPlaneCalibTree/tree");
+    tree->SetBranchAddress("Cent",    &centval);
+    tree->SetBranchAddress("Vtx",     &vtx);
+    tree->SetBranchAddress("Run",     &runno_);
+    tree->SetBranchAddress("NtrkOff", &ntrkval);
+    tree->SetBranchAddress("bin",     &bin);
+    tree->SetBranchAddress("cbin",    &cbin);
+    tree->SetBranchAddress("trkbin",  &trkbin);
+    tree->SetBranchAddress("ws", &wsv);
+    tree->SetBranchAddress("wc", &wcv);
+    tree->SetBranchAddress("ws_no_w", &wsv_no_w);
+    tree->SetBranchAddress("wc_no_w", &wcv_no_w);
+    tree->SetBranchAddress("pt", &pt);
+    tree->SetBranchAddress("pt2",&pt2);
+    tree->SetBranchAddress("cnt",&ptcnt);
+    int n = tree->Draw("Run",Form("Run>=%d && Run<=%d",minRun,maxRun),"goff");
+    if(n<100) continue;
     if(first&&mx>0) {
       for(int i = 0; i<mx; i++) {
 	for(int k = 0; k<flatnvtxbins_;k++) { 
@@ -382,21 +403,6 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
       }
     }
 
-    tree = (TTree *) tf->Get("evtPlaneCalibTree/tree");
-    tree->SetBranchAddress("Cent",    &centval);
-    tree->SetBranchAddress("Vtx",     &vtx);
-    tree->SetBranchAddress("Run",     &runno_);
-    tree->SetBranchAddress("NtrkOff", &ntrkval);
-    tree->SetBranchAddress("bin",     &bin);
-    tree->SetBranchAddress("cbin",    &cbin);
-    tree->SetBranchAddress("trkbin",  &trkbin);
-    tree->SetBranchAddress("ws", &wsv);
-    tree->SetBranchAddress("wc", &wcv);
-    tree->SetBranchAddress("ws_no_w", &wsv_no_w);
-    tree->SetBranchAddress("wc_no_w", &wcv_no_w);
-    tree->SetBranchAddress("pt", &pt);
-    tree->SetBranchAddress("pt2",&pt2);
-    tree->SetBranchAddress("cnt",&ptcnt);
     nentries = tree->GetEntries();
     cout<<"Loop 0: "<<tf->GetName()<<"\t"<<nentries<<"\t"<<totentries<<endl;
     Loop0();
@@ -446,6 +452,8 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000, string ssave="/r
     tree->SetBranchAddress("pt", &pt);
     tree->SetBranchAddress("pt2",&pt2);
     tree->SetBranchAddress("cnt",&ptcnt);
+    int n = tree->Draw("Run",Form("Run>=%d && Run<=%d",minRun,maxRun),"goff");
+    if(n<100) continue;
     
     nentries = tree->GetEntries();
     cout<<"Loop 1: "<<tf->GetName()<<"\t"<<nentries<<"\t"<<totentries<<endl;

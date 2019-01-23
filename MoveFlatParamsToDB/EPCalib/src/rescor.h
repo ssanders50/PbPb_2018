@@ -20,12 +20,16 @@ using namespace hi;
 void ResCor(Double_t mincent, Double_t maxcent, Double_t delcent, Double_t minvtx, Double_t maxvtx ){
 TFile * tf;
 TTree * tr;
-  FILE * fout[NumEPNames];
-  for(int i = 0; i<NumEPNames; i++) {
-    if(mincent==0) {
-      fout[i] = fopen(Form("RescorTables/%s_%d.dat",EPNames[i].data(),(int) delcent),"w");
+ FILE * ftest;
+ ftest=fopen(ressaveName.data(),"r");
+ if(ftest!=NULL) system(Form("rm -rf %s",ressaveName.data()));
+ system(Form("mkdir %s",ressaveName.data()));
+ FILE * fout[NumEPNames];
+ for(int i = 0; i<NumEPNames; i++) {
+   if(mincent==0) {
+     fout[i] = fopen(Form("%s/%s_%d.dat",ressaveName.data(),EPNames[i].data(),(int) delcent),"w");
     } else {
-      fout[i] = fopen(Form("RescorTables/%s_%04.1f_Special_%04.1f_%04.1f.dat",EPNames[i].data(),delcent,mincent,maxcent),"w");
+     fout[i] = fopen(Form("%s/%s_%04.1f_Special_%04.1f_%04.1f.dat",ressaveName.data(),EPNames[i].data(),delcent,mincent,maxcent),"w");
     }
   }
   tf = new TFile(epsaveName.data());

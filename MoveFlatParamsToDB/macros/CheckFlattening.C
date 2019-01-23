@@ -1,4 +1,11 @@
 #include "../EPCalib/HiEvtPlaneList.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TCanvas.h"
+#include "TF1.h"
+#include "TLatex.h"
+#include "TH1D.h"
+using namespace std;
 using namespace hi;
 TFile * fin;
 int checkfiles[4]={HFm2,HFp2,trackmid2,Castor2};
@@ -8,17 +15,14 @@ static const int maxrun = 327564;
 static const int nruns = 1184;
 TH1D * runs = new TH1D("runs","runs",nruns,minrun,maxrun);
 int iruns[nruns];
-int goodruns[50];
+uint goodruns[50];
 int ngoodruns = 0;
 TTree * tr;
-void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
+void CheckFlattening(string fname="/rfs/sanders/tmp/EP_PbPb2018_pixel_1_326789.root") {
   for(int i = 0; i<4; i++) {
     for(int j = 0; j< 50; j++) {
-      //      string rawname = "raw_"+checkfiles[i]+"_"+to_string(j);
       string flatname = "flat_"+EPNames[checkfiles[i]]+"_"+to_string(j);
-      //      TH1D * hraw[i][j] = new TH1D(rawname.data(),rawname.data(),200,-3,3);
       hflat[i][j] = new TH1D(flatname.data(),flatname.data(),100,-2,2);
-
     }
   }
   float EPcent;
@@ -27,11 +31,11 @@ void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
   unsigned int EPrun;
   float EPAngs[NumEPNames];
   int ptcnt[NumEPNames];
-
+  
   fin = new TFile(fname.data());
   if(fin->IsZombie()) {
     cout<<fname<<"  does not exist or is corrupted."<<endl;
-    return 0;
+    return;
   }
   tr = (TTree *) fin->Get("EPtree");
   tr->SetBranchAddress("Cent",    &EPcent);
@@ -42,7 +46,7 @@ void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
   int nentries = tr->GetEntries();
   cout<<nentries<<endl;
   memset(iruns,0,sizeof(iruns));
-  for(int i = 0; i< nentries/50; i++) {
+  for(int i = 0; i< nentries; i++) {
     tr->GetEntry(i);
     ++iruns[EPrun-minrun];
     runs->Fill(EPrun);
@@ -62,7 +66,7 @@ void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
 	break;
       }
     }    
-    if(sel) {
+    if(sel&&EPcent<80) {
       for(int k=0; k<4; k++) {
 	hflat[k][nsel]->Fill(EPAngs[checkfiles[k]]);
       }
@@ -89,7 +93,7 @@ void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
       string fname = canname+"fit"+to_string(j);
       TF1 * f = new TF1(fname.data(),"pol0",-1.5,1.5);
       hflat[j][i]->Fit(f,"qrn");
-      cout<<goodruns[i]<<"\t"<<EPNames[checkfiles[j]]<<"\t"<<f->GetChisquare()/f->GetNDF()<<endl;
+      cout<<goodruns[i]<<"\t"<<hflat[j][i]->Integral(1,1000)<<"\t"<<EPNames[checkfiles[j]]<<"\t"<<f->GetChisquare()/f->GetNDF()<<endl;
       TLatex * rchi = new TLatex(-0.5,0.4*hflat[j][i]->GetMaximum(),Form("#chi^{2}/NDF = %5.2f",f->GetChisquare()/f->GetNDF()));
       rchi->Draw();
       float rchisqr = f->GetChisquare()/f->GetNDF();
@@ -101,6 +105,6 @@ void CheckFlattening(string fname="../save/EP_PbPb2018_1_326886.root") {
     canname= "checkplots/"+canname+".pdf";
     can[i]->Print(canname.data(),"pdf");
   }
-  fin->Close();
+  //fin->Close();
   
 }

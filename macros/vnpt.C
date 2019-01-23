@@ -3,6 +3,7 @@
 #include <signal.h>
 #include "Framework.h"
 #include "TGraphErrors.h"
+#include "TCanvas.h"
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
@@ -21,6 +22,7 @@ TGraphErrors * vnpt(){
     int iroi = f->SetROIRange(order, 25, 30, -0.4, 0.0, ptbins[i],ptbins[i+1]);
     f->SetROIEP(i,HFp2,HFm2,trackmid2);
   }
+  TH1D * spec = f->GetSpectra(0);
   int count = 0;
   int partcount = 0;
   for(int i = 0; i<f->GetN(); i++) {
@@ -36,20 +38,42 @@ TGraphErrors * vnpt(){
   }
   cout<<"Processed "<<count<<" events"<<endl;
   double x[17];
+  double xSub[17];
   double y[17];
+  double ey[17];
+  double eySub[17];
   for(int i = 0; i<nptbins; i++) {
     x[i] = f->GetAvPt(i);
-    y[i] = f->GetqnA(i)/f->GetqABC(i);
-    std::cout<<i<<"\t"<<x[i]<<"\t"<<y[i]<<std::endl;
+    xSub[i] = x[i]+0.02;
+    y[i] = f->GetVn(i);
+    ey[i] = f->GetVnErr(i);
+    eySub[i] = f->GetVnErrSubEvt(i);
+    cout<<x[i]<<"\t"<<y[i]<<"\t"<<ey[i]<<"\t"<<eySub[i]<<endl;
   }
-  TGraphErrors * g = new TGraphErrors(17,x,y,0,0);
+  TGraphErrors * g = new TGraphErrors(17,x,y,0,ey);
+  TGraphErrors * gSub = new TGraphErrors(17,xSub,y,0,eySub);
+  TCanvas * c = new TCanvas("c","c",1000,800);
+  c->Divide(2);
+  c->cd(1);
   TH1D * h = new TH1D("h","h",100,0,12);
   h->SetMinimum(0);
   h->SetMaximum(0.4);
   h->Draw();
   g->SetMarkerStyle(20);
   g->SetMarkerColor(kBlue);
+  g->SetLineColor(kBlue);
   g->Draw("p");
+  gSub->SetMarkerStyle(21);
+  gSub->SetMarkerColor(kRed);
+  gSub->SetLineColor(kRed);
+  gSub->Draw("p");
+  c->cd(2);
+  gPad->SetGrid();
+  gPad->SetLogy();
+  spec->SetMaximum(1e5);
+  spec->Draw();
+
+
   return g ;
 }
 

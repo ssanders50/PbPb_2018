@@ -37,6 +37,7 @@ void Loop3(){
 	}
 	psiFlat = flatOffset[j]->getFlatPsi(psiOffset,vtx,bin);
 	EPAngs[j]=psiFlat;
+	EPOrig[j]=psi;
 	if(centval<80 && fabs(vtx)<15&&bin>=0) {
 	  hPsiFlat[j]->Fill(psiFlat);
 	}

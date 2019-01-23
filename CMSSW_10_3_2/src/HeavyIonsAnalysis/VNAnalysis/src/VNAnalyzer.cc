@@ -231,7 +231,7 @@ private:
   TH2D * resw12[ntrkbins];
   TH2D * resep12[ntrkbins];
   TH2D * rescnt12[ntrkbins];
-  
+  TH2D * ptspec[ntrkbins];  
   HiEvtPlaneFlatten * flat[NumEPNames];
   bool loadDB_;
   bool useNtrkBins_; 
@@ -360,6 +360,7 @@ private:
 	  qytrk[iorder-1]->Fill(pt, eta, eff*(TMath::Sin(iorder*phi) - offsets[k].wqytrkRef[iorder-1][bin]->GetBinContent(ipt,ieta)));
 	}
 	qcnt->Fill(itTrack->pt(), itTrack->eta(), eff);
+	ptspec[bin]->Fill(pt,eta);
 	avpt->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
       }
       if( itTrack->pt() < 0.2 ) continue;
@@ -751,6 +752,22 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     resep12[i]->GetYaxis()->SetTitle("n = 2");
     rescnt12[i]->GetXaxis()->SetTitle("n = 1");
     rescnt12[i]->GetYaxis()->SetTitle("n = 2");
+  }
+  //====================================================
+  //========= Spectra =================================
+  TFileDirectory specdir = fs->mkdir("Spectra");
+  for(int i = 0; i<nanalbins; i++) {
+    TFileDirectory specsubdir;
+    if(useNtrk_) {
+      specsubdir = specdir.mkdir(Form("%d_%d",(int)trkBins[i],(int)trkBins[i+1]));
+    } else {
+      specsubdir = specdir.mkdir(Form("%d_%d",(int)centbins[i],(int)centbins[i+1]));
+    }
+    ptspec[i] =  specsubdir.make<TH2D>("ptspec","ptspec",npt,ptbins, netabinsDefault, etabinsDefault);
+    ptspec[i]->Sumw2();
+    ptspec[i]->SetXTitle("p_{T} (GeV/c)");
+    ptspec[i]->SetYTitle("Yield");
+    ptspec[i]->SetOption("colz");
   }
   
   //==============================

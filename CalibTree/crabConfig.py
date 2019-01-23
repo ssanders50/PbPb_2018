@@ -20,6 +20,7 @@ config.Site.storageSite = 'T2_US_Vanderbilt'
 config.Data.lumiMask = 'json_DCSONLY_HI.txt'
 config.JobType.inputFiles = ['json_DCSONLY_HI.txt']
 
+#config.Data.runRange = '326534-326534'
 config.Data.runRange = '326381-326886'
 config.General.requestName = 'PbPb2018_general_326381_326886'
 config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_general_326381_326886'
@@ -52,19 +53,19 @@ config.General.requestName = 'PbPb2018_general_326887_327564'
 config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_general_326887_327564'
 config.JobType.pyCfgParams = ['noprint','lumifile=json_DCSONLY_HI.txt','tracks=generalTracks']
 config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v2/AOD'
-submit(config)
+#submit(config)
 
 config.Data.runRange = '326381-326886'
 config.General.requestName = 'PbPb2018_pixel_326381_326886'
 config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_pixel_326381_326886'
 config.JobType.pyCfgParams = ['noprint','lumifile=json_DCSONLY_HI.txt','tracks=hiConformalPixelTracks']
 config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v1/AOD'
-submit(config)
+#submit(config)
 
 config.Data.runRange = '326887-327564'
 config.General.requestName = 'PbPb2018_pixel_326887_327564'
 config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_pixel_326887_327564'
 config.JobType.pyCfgParams = ['noprint','lumifile=json_DCSONLY_HI.txt','tracks=hiConformalPixelTracks']
 config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v2/AOD'
-submit(config)
+#submit(config)
 
