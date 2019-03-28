@@ -29,5 +29,6 @@ hiEvtPlane = cms.EDProducer("EvtPlaneProducer",
                             d0d0error = cms.double(3.),
                             pterror = cms.double(0.1),
                             dzdzerror_pix = cms.double(10.),
+                            d0d0error_pix = cms.double(20.),
                             chi2 = cms.double(40.)
                             )

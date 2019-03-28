@@ -28,10 +28,10 @@ using namespace edm;
 
 
 namespace hi{
-enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,  GenMC};
+  enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,  generalAndHiPixelTracks, GenMC};
  class TrackQuality {
  public:
-    TrackQuality(edm::InputTag trackTag_, double dz = 3, double d0 = 3, double pt = 0.1, double dzpix = 10, double chi2 = 40 ){
+   TrackQuality(edm::InputTag trackTag_, double dz = 3, double d0 = 3, double pt = 0.1, double dzpix = 10, double d0pix=20, double chi2 = 40){
      string trackType = trackTag_.label();
      if ( trackType == "hiGeneralTracks" ) {
        sTrackQuality = HIReco;
@@ -45,6 +45,9 @@ enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,
      } else if ( trackType == "hiConformalPixelTracks" ) {
        sTrackQuality = PixelOnly;
        //std::cout<<"pixel only"<<std::endl;
+     } else if ( trackType == "generalAndHiPixelTracks" ) {
+       sTrackQuality = generalAndHiPixelTracks;
+       //std::cout<<"pixel only"<<std::endl;
      } else if (trackType == "mcEvtPlane") {
        sTrackQuality = GenMC;
        //std::cout<<"mcEvtPlane"<<std::endl;
@@ -56,9 +59,11 @@ enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,
      d0d0error_ = d0;
      pterror_ = pt;
      dzdzerror_pix_ = dzpix;
+     d0d0error_pix_ = d0pix;
      chi2_ = chi2;
+ 
    }
-   bool isGood(const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices);
+   bool isGood(const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices, double centrality = 0);
    bool is_ppReco(){
      if(sTrackQuality == ppReco) return true;
      else return false;
@@ -71,6 +76,7 @@ enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,
    bool TrackQuality_HIReco(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&);
    bool TrackQuality_MergedPixel(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&);
    bool TrackQuality_PixelOnly(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&);
+   bool TrackQuality_generalAndHiPixelTracks(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&, double centrality=0);
    bool TrackQuality_GenMC(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&);
  private:
    TrackCut sTrackQuality;
@@ -78,16 +84,19 @@ enum    TrackCut {trackUndefine = 0, ppReco = 1, HIReco, MergedPixel, PixelOnly,
    double d0d0error_ ;
    double pterror_ ;
    double dzdzerror_pix_ ;
+   double d0d0error_pix_ ;
    double chi2_ ;
+  
  };
 }
 
 bool 
-TrackQuality::isGood( const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices) {
+TrackQuality::isGood( const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices, double centrality) {
   bool isGood = true;
   if ( sTrackQuality == HIReco and not TrackQuality_HIReco(itTrack, recoVertices) ) isGood = false;
   else if ( sTrackQuality == ppReco and not TrackQuality_ppReco(itTrack, recoVertices) ) isGood = false;
   else if ( sTrackQuality == MergedPixel  and not TrackQuality_MergedPixel (itTrack, recoVertices) ) isGood = false;
+  else if ( sTrackQuality == generalAndHiPixelTracks and not TrackQuality_generalAndHiPixelTracks(itTrack, recoVertices,centrality)) isGood = false;
   else if ( sTrackQuality == PixelOnly  and not TrackQuality_PixelOnly (itTrack, recoVertices) ) isGood = false;
   return isGood;
 }
@@ -207,6 +216,39 @@ TrackQuality::TrackQuality_MergedPixel(const reco::TrackCollection::const_iterat
     if ( fabs( dz/dzerror ) > dzdzerror_pix_ ) {
       return false;
     }
+  }
+  return true;
+}
+///
+bool
+TrackQuality::TrackQuality_generalAndHiPixelTracks(const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices, double centrality)
+{
+  if ( itTrack->charge() == 0 ) return false;
+  int primaryvtx = 0;
+  math::XYZPoint v1( recoVertices[primaryvtx].position().x(), recoVertices[primaryvtx].position().y(), recoVertices[primaryvtx].position().z() );
+  double vxError = recoVertices[primaryvtx].xError();
+  double vyError = recoVertices[primaryvtx].yError();
+  double vzError = recoVertices[primaryvtx].zError();
+  double d0 = -1.* itTrack->dxy(v1);
+  double dz=itTrack->dz(v1);
+  double dzerror=sqrt(itTrack->dzError()*itTrack->dzError()+vzError*vzError);
+  double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError);
+  
+  if( (itTrack->pt() < 1.0 && centrality < 10) ||( itTrack->pt() < 0.6 && centrality >= 10)) {
+    //pixel tracks
+    if ( fabs( dz/dzerror ) > dzdzerror_pix_ ) return false;
+    double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError);
+    if ( fabs( d0/derror ) > d0d0error_pix_ ) return false;
+    
+  } else {
+    //general tracks
+    if ( !itTrack->quality(reco::TrackBase::highPurity) ) return false;
+    int nHits = itTrack->numberOfValidHits();
+    if ( nHits < 11 ) return false;
+    if ( itTrack->ptError()/itTrack->pt() > pterror_ ) return false;
+    if ( fabs( dz/dzerror ) > dzdzerror_ ) return false;
+    if ( fabs( d0/derror ) > d0d0error_ ) return false;
+    if ( itTrack->normalizedChi2() / itTrack->hitPattern().trackerLayersWithMeasurement() > chi2_ ) return false;
   }
   return true;
 }

@@ -83,8 +83,8 @@ process.CondDB.connect = "sqlite_file:"+ivars.dbfile
 process.PoolDBESSource = cms.ESSource("PoolDBESSource",
                                        process.CondDB,
                                        toGet = cms.VPSet(cms.PSet(record = cms.string('HeavyIonRPRcd'),
-#                                                                  tag = cms.string('HeavyIonRPRcd_PbPb2018_offline')
-                                                                  tag = cms.string('HeavyIonRPRcd')
+                                                                  tag = cms.string('HeavyIonRPRcd_PbPb2018_offline')
+#                                                                  tag = cms.string('HeavyIonRPRcd')
                                                                   )
                                                          )
                                       )

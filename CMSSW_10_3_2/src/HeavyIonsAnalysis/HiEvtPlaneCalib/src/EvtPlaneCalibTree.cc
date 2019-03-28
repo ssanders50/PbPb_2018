@@ -157,6 +157,7 @@ private:
   double  d0d0error_;
   double  pterror_;
   double dzdzerror_pix_;
+  double d0d0error_pix_;
   double chi2_;
   double minvz_;
   double maxvz_;
@@ -205,10 +206,12 @@ private:
   TH1D * hb;
   TH1D * hcentbins;
   TH1D * hflatbins;
-  TH1D * hptspec;
+  TH1D * hptbins;
   TH2F * hpt;
   TH2F * hpt2;
   TH2F * hptcnt;
+  TH1D * hptspec0to10;
+  TH1D * hptspec10to20;
   TH1D * HFpEt;
   TH1D * HFmEt;
   struct offstruct{
@@ -352,9 +355,10 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   d0d0error_ = iConfig.getUntrackedParameter<double>("d0d0error_", 3.);
   pterror_ = iConfig.getUntrackedParameter<double>("pterror_", 0.1);
   dzdzerror_pix_ = iConfig.getUntrackedParameter<double>("dzdzerror_pix_") ;
+  d0d0error_pix_ = iConfig.getUntrackedParameter<double>("d0d0error_pix_") ;
   minvz_ = iConfig.getUntrackedParameter<double>("minvz_", -15.);
   maxvz_ = iConfig.getUntrackedParameter<double>("maxvz_", 15.);
-  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, chi2_);  
+  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, d0d0error_pix_,chi2_);  
  
   storeNames_ = 1;
   
@@ -363,11 +367,12 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   hb = fs->make<TH1D>("b","b",12000,0,12000);
   HFpEt = fs->make<TH1D>("HFpEt","HFpEt",800,0,40);
   HFmEt = fs->make<TH1D>("HFmEt","HFmEt",800,0,40);
-
+  hptspec0to10 = fs->make<TH1D>("ptspec0to10","ptspec0to10",1000,0,10);
+  hptspec10to20 = fs->make<TH1D>("ptspec10to20","ptspec10to20",1000,0,10);
   hcentbins = fs->make<TH1D>("centbins","centbins",ncentbins,centbins);
   hflatbins = fs->make<TH1D>("flatbins","flatbins",100,0,100);
   htrkbins = fs->make<TH1D>("trkbins","trkbins",ntrkbins,trkbins);
-  hptspec = fs->make<TH1D>("pt","pt",nptbins,ptbins);
+  hptbins = fs->make<TH1D>("ptbins","ptbins",nptbins,ptbins);
   TString epnamesF = EPNames[0].data();
   epnamesF = epnamesF+"/F";
   for(int i = 0; i<NumEPNames; i++) if(i>0) epnamesF = epnamesF + ":" + EPNames[i].data() + "/F";  
@@ -394,6 +399,7 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   cout<<"  d0d0error_:             "<<d0d0error_<<endl;
   cout<<"  pterror_:               "<<pterror_<<endl;
   cout<<"  dzdzerror_pix_          "<<dzdzerror_pix_<<endl;
+  cout<<"  d0d0error_pix_          "<<d0d0error_pix_<<endl;
   cout<<"  chi2_                   "<<chi2_<<endl;
   cout<<"  NumEPNames:             "<<NumEPNames<<endl;
   if(useNtrk_) cout<<"  useNtrk true"<<endl;
@@ -420,6 +426,8 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   conddir.make<TH1I>(note_d0d0error.data(), note_d0d0error.data(),1,0,1);
   string note_dzdzerror_pix = Form("dzdzerror_pix_%07.2f",dzdzerror_pix_);
   conddir.make<TH1I>(note_dzdzerror_pix.data(), note_dzdzerror_pix.data(),1,0,1);
+  string note_d0d0error_pix = Form("d0d0error_pix_%07.2f",d0d0error_pix_);
+  conddir.make<TH1I>(note_d0d0error_pix.data(), note_d0d0error_pix.data(),1,0,1);
   string note_chi2 = Form("chi2_%07.2f",chi2_);
   conddir.make<TH1I>(note_chi2.data(), note_chi2.data(),1,0,1);
   string note_vtx_range = Form("vtx_%5.1f_%5.1f",minvz_,maxvz_);
@@ -670,13 +678,15 @@ EvtPlaneCalibTree::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     for(reco::TrackCollection::const_iterator itTrack = trackCollection_->begin();
 	itTrack != trackCollection_->end();                      
 	++itTrack) {    
-      if(!trackq->isGood(itTrack, recoVertices)) continue; 
+      if(!trackq->isGood(itTrack, recoVertices, centval)) continue; 
       
       double pt = itTrack->pt();
       double eta = itTrack->eta();
       double phi = itTrack->phi();
       if(fabs(eta)<0.8 && fabs(vtx)<15) {
-	hptspec->Fill(pt); 
+	hptbins->Fill(pt);
+	if(centval<10) hptspec0to10->Fill(pt); 
+	if(centval>=10&&centval<20) hptspec10to20->Fill(pt); 
 	if(pt>=0.3 && pt<3.0) ++evtrkcnt;
       }
       int k = (vtx-flatminvtx_)/flatdelvtx_;

@@ -216,6 +216,7 @@ private:
   double d0d0error_;
   double pterror_;
   double dzdzerror_pix_;
+  double d0d0error_pix_;
   double chi2_;
   
 
@@ -261,6 +262,7 @@ EvtPlaneProducer::EvtPlaneProducer(const edm::ParameterSet& iConfig):
   d0d0error_ ( iConfig.getParameter<double>("d0d0error") ),
   pterror_ ( iConfig.getParameter<double>("pterror") ),
   dzdzerror_pix_ ( iConfig.getParameter<double>("dzdzerror_pix") ),
+  d0d0error_pix_ ( iConfig.getParameter<double>("d0d0error_pix") ),
   chi2_  ( iConfig.getParameter<double>("chi2") ),
   FlatOrder_ ( iConfig.getParameter<int>("FlatOrder") ),
   NumFlatBins_ ( iConfig.getParameter<int>("NumFlatBins") ),
@@ -285,7 +287,7 @@ EvtPlaneProducer::EvtPlaneProducer(const edm::ParameterSet& iConfig):
   castorToken = consumes<std::vector<reco::CastorTower>>(castorTag_);
 
   trackToken = consumes<reco::TrackCollection>(trackTag_);
-  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, chi2_);
+  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, d0d0error_pix_, chi2_);
 
   tag_ = consumes<int>(iConfig.getParameter<edm::InputTag>("BinLabel"));
   useNtrk_ = iConfig.getUntrackedParameter<bool>("useNtrk",false);
@@ -371,10 +373,13 @@ EvtPlaneProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   //Get Centrality
   //
   bin = 0;
+  double centval = 0;
   if(!useNtrk_) {
     edm::Handle<int> cbin_;
     iEvent.getByToken(centralityBinToken, cbin_);
     int cbin = *cbin_;
+    double cscale = 0.5;
+    centval = cscale*cbin;
     bin = cbin/CentBinCompression_;
   } else {
     iEvent.getByToken(tag_,cbin_);
@@ -485,7 +490,7 @@ EvtPlaneProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(trackToken, trackCollection_);
     if(trackCollection_.isValid()){
       for(reco::TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); itTrack++){
-	if(!trackq->isGood(itTrack, recoVertices)) continue;
+	if(!trackq->isGood(itTrack, recoVertices, centval)) continue;
 	track_eta = itTrack->eta();
 	track_phi = itTrack->phi();
 	track_pt = itTrack->pt();

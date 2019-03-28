@@ -11,7 +11,7 @@ ivars.register('lumifile',
                 "lumi file")
 
 ivars.register('tracks',
-                'generalTracks',
+                'generalAndHiPixelTracks',
 		VarParsing.VarParsing.multiplicity.singleton,
 		VarParsing.VarParsing.varType.string,
                 "track collection")
@@ -32,6 +32,7 @@ process.load('HeavyIonsAnalysis.EventAnalysis.clusterCompatibilityFilter_cfi')
 process.load("HeavyIonsAnalysis.Configuration.hfCoincFilter_cff")
 process.load("HeavyIonsAnalysis.Configuration.analysisFilters_cff")
 process.load("HeavyIonsAnalysis.Configuration.collisionEventSelection_cff")
+process.load("MergingProducer.generalAndHiPixelTracks.MergingPixAndGenProducer_cfi")
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
@@ -176,8 +177,9 @@ process.hiEvtPlane.minet = cms.double(0.01)
 process.hiEvtPlane.dzdzerror = cms.double(3.0)
 process.hiEvtPlane.d0d0error = cms.double(3.0)
 process.hiEvtPlane.pterror = cms.double(0.1)
-process.hiEvtPlane.dzdzerror_pix = cms.double(10.)
-process.hiEvtPlane.chi2 = cms.double(40.)
+process.hiEvtPlane.dzdzerror_pix = cms.double(7)
+process.hiEvtPlane.d0d0error_pix = cms.double(20)
+process.hiEvtPlane.chi2 = cms.double(0.18)
 process.evtPlaneCalibTree.useNtrk = cms.untracked.bool(False)
 process.evtPlaneCalibTree.vertexTag_ = cms.InputTag("offlinePrimaryVertices")
 process.evtPlaneCalibTree.trackTag = cms.InputTag(ivars.tracks);
@@ -190,8 +192,9 @@ process.evtPlaneCalibTree.dzdzerror_ = cms.untracked.double(3.0)
 process.evtPlaneCalibTree.d0d0error_ = cms.untracked.double(3.0)
 process.evtPlaneCalibTree.pterror_ = cms.untracked.double(0.1)
 process.evtPlaneCalibTree.minet_ = cms.untracked.double(0.01)
-process.evtPlaneCalibTree.dzdzerror_pix_ = cms.untracked.double(10.0)
-process.evtPlaneCalibTree.chi2_ = cms.untracked.double(40.)
-process.p = cms.Path(process.hltSelect*process.collisionEventSelectionAODv2*process.centralityBin*process.hiEvtPlane * process.evtPlaneCalibTree  )
+process.evtPlaneCalibTree.dzdzerror_pix_ = cms.untracked.double(7.)
+process.evtPlaneCalibTree.d0d0error_pix_ = cms.untracked.double(20.)
+process.evtPlaneCalibTree.chi2_ = cms.untracked.double(0.18)
+process.p = cms.Path(process.hltSelect*process.collisionEventSelectionAODv2*process.centralityBin*process.generalAndHiPixelTracks*process.hiEvtPlane * process.evtPlaneCalibTree  )
 
 

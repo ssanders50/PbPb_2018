@@ -29,6 +29,7 @@ evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
                             minvz_ = cms.untracked.double(-15.),
                             maxvz_ = cms.untracked.double(15.),
                             dzdzerror_pix_ = cms.untracked.double(8.0),
+                            d0d0error_pix_ = cms.untracked.double(8.0),
                             chi2_ = cms.untracked.double(12.)
                             )
                             
