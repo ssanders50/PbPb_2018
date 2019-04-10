@@ -19,6 +19,9 @@ string efffile = "eff.root";
 #endif
 using namespace hi;
 using namespace std;
+  static const int nqxorder = 1;
+  int qxorders[nqxorder]={2};
+
 class Framework{
 public:
   Framework(string fileName="data.root");
@@ -35,6 +38,7 @@ public:
   double GetVnErr(int roi) {return GetqnAError(roi)/GetqABC(roi);}
   double GetqABC(int roi);
   TH1D * GetSpectra(int roi, bool effCorrect = true);
+  TH2D * Get2d(int roi){return r[roi].vn2d;}
 private:
   TRandom * ran;
   double GetVnSub(int roi,int i) {return r[roi].qnSub[i]/r[roi].wnASub[i]/GetqABC(roi);}
@@ -64,6 +68,7 @@ private:
   TH2F * avpt=nullptr;
   struct range {
     int order;
+    int orderIndx;
     int minCent;
     int maxCent;
     double minEta;
@@ -95,6 +100,7 @@ private:
     double qnSub[10]={0,0,0,0,0,0,0,0,0,0};
     double qnSube[10]={0,0,0,0,0,0,0,0,0,0};
     double wnASub[10]={0,0,0,0,0,0,0,0,0,0};
+    TH2D * vn2d;
   } r[20];
   int nrange = 0;
 };
@@ -120,26 +126,25 @@ Framework::Framework(string fileName){
   tr->SetBranchAddress("Run",     &runno_);
   tr->SetBranchAddress("Rescor",  &rescor);
   tr->SetBranchAddress("RescorErr",&rescorErr);
-  tr->SetBranchAddress("qxtrk1",  &qxtrk[0]);
-  tr->SetBranchAddress("qytrk1",  &qytrk[0]);
-  tr->SetBranchAddress("qxtrk2",  &qxtrk[1]);
-  tr->SetBranchAddress("qytrk2",  &qytrk[1]);
-  tr->SetBranchAddress("qxtrk3",  &qxtrk[2]);
-  tr->SetBranchAddress("qytrk3",  &qytrk[2]);
-  tr->SetBranchAddress("qxtrk4",  &qxtrk[3]);
-  tr->SetBranchAddress("qytrk4",  &qytrk[3]);
-  tr->SetBranchAddress("qxtrk5",  &qxtrk[4]);
-  tr->SetBranchAddress("qytrk5",  &qytrk[4]);
-  tr->SetBranchAddress("qxtrk6",  &qxtrk[5]);
-  tr->SetBranchAddress("qytrk6",  &qytrk[5]);
-  tr->SetBranchAddress("qxtrk7",  &qxtrk[6]);
-  tr->SetBranchAddress("qytrk7",  &qytrk[6]);
+  for(int iorder = 0; iorder<nqxorder; iorder++) {
+    tr->SetBranchAddress(Form("qxtrk%d",qxorders[iorder]),  &qxtrk[iorder]);
+    tr->SetBranchAddress(Form("qytrk%d",qxorders[iorder]),  &qytrk[iorder]);
+  }
   tr->SetBranchAddress("qcnt",    &qcnt);
   tr->SetBranchAddress("avpt",    &avpt);
   
 }
 int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, double maxEta, double minPt, double maxPt) {
   if(maxevents==0) return -1;
+  int ifound = -1;
+  for(int i = 0; i<nqxorder; i++) {
+    if(order == qxorders[i]) ifound = i;
+  }
+  if(ifound<0) {
+    cout<<"The requested vn order is not part of the replay. ABORT!"<<endl;
+    return -1;
+  }
+  r[nrange].orderIndx = ifound;
   GetEntry(0);
   r[nrange].order = order;
   r[nrange].minCent = minCent;
@@ -152,6 +157,10 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].maxEta = qxtrk[0]->GetYaxis()->GetBinLowEdge(r[nrange].maxEtaBin)+qxtrk[0]->GetYaxis()->GetBinWidth(r[nrange].maxEtaBin);
   r[nrange].minPt = qxtrk[0]->GetXaxis()->GetBinLowEdge(r[nrange].minPtBin);
   r[nrange].maxPt = qxtrk[0]->GetXaxis()->GetBinLowEdge(r[nrange].maxPtBin)+qxtrk[0]->GetXaxis()->GetBinWidth(r[nrange].maxPtBin);
+  r[nrange].vn2d = new TH2D(Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.2,1.2,100,-1.2,1.2);
+  r[nrange].vn2d->SetOption("colz");
+
   ++nrange;
   return nrange-1;
 } 
@@ -194,12 +203,12 @@ void Framework::AddEvent(int evt) {
     double pt = 0;
     for(int j = r[i].minEtaBin; j<= r[i].maxEtaBin; j++) {
       for(int k = r[i].minPtBin; k<=r[i].maxPtBin; k++) {
-	qnx+=qxtrk[r[i].order-1]->GetBinContent(k,j);
-	qny+=qytrk[r[i].order-1]->GetBinContent(k,j);
+	qnx+=qxtrk[r[i].orderIndx]->GetBinContent(k,j);
+	qny+=qytrk[r[i].orderIndx]->GetBinContent(k,j);
 	qncnt+=qcnt->GetBinContent(k,j);
-	if(qcnt->GetBinContent(i,j)>0) {
-	  qnxe+=pow(qxtrk[r[i].order-1]->GetBinError(k,j),2);
-	  qnye+=pow(qytrk[r[i].order-1]->GetBinError(k,j),2);
+	if(qcnt->GetBinContent(k,j)>0) {
+	  qnxe+=pow(qxtrk[r[i].orderIndx]->GetBinError(k,j),2);
+	  qnye+=pow(qytrk[r[i].orderIndx]->GetBinError(k,j),2);
 	  qncnte+=pow(qcnt->GetBinError(k,j),2);
 	}
 	pt+=avpt->GetBinContent(k,j);
@@ -207,7 +216,9 @@ void Framework::AddEvent(int evt) {
     }
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
+
     if(qncnt>0) {
+      r[i].vn2d->Fill(qnx/qncnt,qny/qncnt);
       r[i].qn+=val;
       r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
       r[i].qnSub[isub]+=val;
