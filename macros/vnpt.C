@@ -20,7 +20,8 @@ TGraphErrors * vnpt(){
   Framework * f = new Framework();
   for(int i = 0; i<nptbins; i++) {
     int iroi = f->SetROIRange(order, 25, 30, -0.4, 0.0, ptbins[i],ptbins[i+1]);
-    f->SetROIEP(i,HFp2,HFm2,trackmid2);
+    if(iroi<0) return NULL;
+    f->SetROIEP(iroi,HFp2,HFm2,trackmid2);
   }
   TH1D * spec = f->GetSpectra(0);
   int count = 0;
@@ -70,9 +71,15 @@ TGraphErrors * vnpt(){
   c->cd(2);
   gPad->SetGrid();
   gPad->SetLogy();
-  spec->SetMaximum(1e5);
+  spec->SetMaximum(1e8);
   spec->Draw();
-
+  TCanvas * c2 = new TCanvas("vn2d","vn2d",1200,1200);
+  c2->Divide(4,4);
+  for(int i = 0; i<16; i++) {
+    c2->cd(i+1);
+    f->Get2d(i)->Draw();
+    gPad->SetGrid(1,1);
+  }
 
   return g ;
 }
