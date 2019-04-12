@@ -39,8 +39,12 @@ public:
   double GetqABC(int roi);
   TH1D * GetSpectra(int roi, bool effCorrect = true);
   TH2D * Get2d(int roi){return r[roi].vn2d;}
+  double GetVnxEvt(){return vnxEvt;}
+  double GetVnyEvt(){return vnyEvt;}
 private:
   TRandom * ran;
+  double vnxEvt = -1;
+  double vnyEvt = -1;
   double GetVnSub(int roi,int i) {return r[roi].qnSub[i]/r[roi].wnASub[i]/GetqABC(roi);}
   double GetqnAError(int roi){return sqrt(r[roi].qne)/r[roi].wnA;}
   int maxevents;
@@ -216,9 +220,12 @@ void Framework::AddEvent(int evt) {
     }
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
-
+    vnxEvt = -2;
+    vnyEvt = -2;
     if(qncnt>0) {
-      r[i].vn2d->Fill(qnx/qncnt,qny/qncnt);
+      vnxEvt = qnx/qncnt;
+      vnyEvt = qny/qncnt;
+      r[i].vn2d->Fill(vnxEvt,vnyEvt);
       r[i].qn+=val;
       r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
       r[i].qnSub[isub]+=val;
