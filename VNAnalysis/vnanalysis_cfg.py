@@ -11,13 +11,13 @@ ivars.register ('lumifile',
                 info="lumi file")
 
 ivars.register ('offset',
-                'offset_PbPb2018_general_326521_326544.root',
+                'offset_PbPb2018_merged_1_327423.root',
                 mult=ivars.multiplicity.singleton,
                 mytype=ivars.varType.string,
                 info="offset file")
 
 ivars.register ('dbfile',
-                'HeavyIonRPRcd_PbPb2018_general_326521_326544.db',
+                'HeavyIonRPRcd_PbPb2018_merged_offline.db',
                 mult=ivars.multiplicity.singleton,
                 mytype=ivars.varType.string,
                 info="dbfile file")
@@ -83,8 +83,8 @@ process.CondDB.connect = "sqlite_file:"+ivars.dbfile
 process.PoolDBESSource = cms.ESSource("PoolDBESSource",
                                        process.CondDB,
                                        toGet = cms.VPSet(cms.PSet(record = cms.string('HeavyIonRPRcd'),
-                                                                  tag = cms.string('HeavyIonRPRcd_PbPb2018_offline')
-#                                                                  tag = cms.string('HeavyIonRPRcd')
+#                                                                  tag = cms.string('HeavyIonRPRcd_PbPb2018_offline')
+                                                                  tag = cms.string('HeavyIonRPRcd')
                                                                   )
                                                          )
                                       )
