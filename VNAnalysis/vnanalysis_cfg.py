@@ -11,13 +11,13 @@ ivars.register ('lumifile',
                 info="lumi file")
 
 ivars.register ('offset',
-                'offset_PbPb2018_merged_1_327423.root',
+                'offset_PbPb2018_merged_1_326544.root',
                 mult=ivars.multiplicity.singleton,
                 mytype=ivars.varType.string,
                 info="offset file")
 
 ivars.register ('dbfile',
-                'HeavyIonRPRcd_PbPb2018_merged_offline.db',
+                'HeavyIonRPRcd_PbPb2018_merged_1_326544.db',
                 mult=ivars.multiplicity.singleton,
                 mytype=ivars.varType.string,
                 info="dbfile file")
@@ -27,6 +27,12 @@ ivars.register ('eff',
                 mult=ivars.multiplicity.singleton,
                 mytype=ivars.varType.string,
                 info="efficiency file")
+
+ivars.register('tracks',
+                'generalAndHiPixelTracks',
+		VarParsing.VarParsing.multiplicity.singleton,
+		VarParsing.VarParsing.varType.string,
+                "track collection")
 
 ivars.parseArguments()
 
@@ -44,6 +50,7 @@ process.load("HeavyIonsAnalysis.EventAnalysis.clusterCompatibilityFilter_cfi")
 process.load("HeavyIonsAnalysis.Configuration.hfCoincFilter_cff")
 process.load("HeavyIonsAnalysis.Configuration.analysisFilters_cff")
 process.load("HeavyIonsAnalysis.Configuration.collisionEventSelection_cff")
+process.load("MergingProducer.generalAndHiPixelTracks.MergingPixAndGenProducer_cfi")
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '103X_dataRun2_Prompt_v3', '')
@@ -180,7 +187,7 @@ process.towersAboveThreshold.minimumE = cms.double(4.0)
 
 process.dump = cms.EDAnalyzer("EventContentAnalyzer")
 
-process.hiEvtPlane.trackTag = cms.InputTag("generalTracks")
+process.hiEvtPlane.trackTag = cms.InputTag(ivars.tracks)
 #process.hiEvtPlane.trackTag = cms.InputTag("hiConformalPixelTracks")
 process.hiEvtPlane.vertexTag = cms.InputTag("offlinePrimaryVertices")
 process.hiEvtPlane.loadDB = cms.bool(True)
@@ -192,14 +199,14 @@ process.hiEvtPlane.minet = cms.double(0.01)
 process.hiEvtPlane.dzdzerror = cms.double(3.0)
 process.hiEvtPlane.d0d0error = cms.double(3.0)
 process.hiEvtPlane.pterror = cms.double(0.1)
-process.hiEvtPlane.dzdzerror_pix = cms.double(10.)
-process.hiEvtPlane.chi2 = cms.double(40.)
+process.hiEvtPlane.dzdzerror_pix = cms.double(7)
+process.hiEvtPlane.chi2 = cms.double(0.18)
 process.hiEvtPlaneFlat.vertexTag = cms.InputTag("offlinePrimaryVertices")
 process.hiEvtPlaneFlat.useNtrk = cms.untracked.bool(False)
 process.hiEvtPlaneFlat.flatnvtxbins = cms.int32(10)
 process.hiEvtPlaneFlat.flatminvtx = cms.double(-15)
 process.hiEvtPlaneFlat.flatdelvtx = cms.double(3.0)
-process.vnanalyzer.trackTag_ = cms.InputTag("generalTracks")
+process.vnanalyzer.trackTag_ = cms.InputTag(ivars.tracks)
 #process.vnanalyzer.trackTag_ = cms.InputTag("hiConformalPixelTracks")
 process.vnanalyzer.vertexTag_ = cms.InputTag("offlinePrimaryVertices")
 process.vnanalyzer.useNtrk = cms.untracked.bool(False)
@@ -210,12 +217,12 @@ process.vnanalyzer.Recenter = cms.untracked.bool(True)
 process.vnanalyzer.dzdzerror_ = cms.untracked.double(3.0)
 process.vnanalyzer.d0d0error_ = cms.untracked.double(3.0)
 process.vnanalyzer.pterror_ = cms.untracked.double(0.1)
-process.vnanalyzer.dzdzerror_pix_ = cms.untracked.double(10.0)
-process.vnanalyzer.chi2_ = cms.untracked.double(40.0)
+process.vnanalyzer.dzdzerror_pix_ = cms.untracked.double(7.)
+process.vnanalyzer.chi2_ = cms.untracked.double(0.18)
 process.vnanalyzer.flatnvtxbins = cms.int32(10)
 process.vnanalyzer.flatminvtx = cms.double(-15)
 process.vnanalyzer.flatdelvtx = cms.double(3.0)
 process.vnanalyzer.minrun_ = cms.untracked.int32(326500)
 process.vnanalyzer.maxrun_ = cms.untracked.int32(328500)
 process.vnanalyzer.makeTree_ = cms.untracked.bool(True)
-process.p = cms.Path(process.hltSelect*process.collisionEventSelectionAODv2*process.centralityBin* process.hiEvtPlane * process.hiEvtPlaneFlat*process.vnanalyzer)
+process.p = cms.Path(process.hltSelect*process.collisionEventSelectionAODv2*process.centralityBin* process.generalAndHiPixelTracks*process.hiEvtPlane * process.hiEvtPlaneFlat*process.vnanalyzer)

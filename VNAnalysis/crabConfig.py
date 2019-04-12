@@ -12,7 +12,7 @@ config.JobType.maxJobRuntimeMin = 1350
 config.section_('Data')
 config.Data.allowNonValidInputDataset = True
 config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v1/AOD'
-config.Data.unitsPerJob = 50
+config.Data.unitsPerJob = 80
 config.Data.publication = False
 config.Data.splitting = 'LumiBased'
 config.section_('User')
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 #submit(config)
 iovs=[1, 326545, 326620, 326887, 327147, 327230, 328000]
 #niovs = len(iovs)-1
-niovs = 3
+niovs = 5
 for i in range(0, niovs):
     print(' =============== ')
     print(iovs[i])
