@@ -24,7 +24,8 @@ using namespace std;
 
 class Framework{
 public:
-  Framework(string fileName="data.root");
+  Framework(string filelist="filelist.dat");
+  bool AddFile();
   int GetN(){return maxevents;}
   void GetEntry(int i){tr->GetEntry(i);}
   int SetROIRange(int order, int minCent, int maxCent, double minEta, double maxEta, double minPt, double maxPt);
@@ -39,12 +40,13 @@ public:
   double GetqABC(int roi);
   TH1D * GetSpectra(int roi, bool effCorrect = true);
   TH2D * Get2d(int roi){return r[roi].vn2d;}
-  double GetVnxEvt(){return vnxEvt;}
-  double GetVnyEvt(){return vnyEvt;}
+  double GetVnxEvt(int roi){return vnxEvt[roi];}
+  double GetVnyEvt(int roi){return vnyEvt[roi];}
+  FILE * flist;
 private:
   TRandom * ran;
-  double vnxEvt = -1;
-  double vnyEvt = -1;
+  double vnxEvt[100];
+  double vnyEvt[100];
   double GetVnSub(int roi,int i) {return r[roi].qnSub[i]/r[roi].wnASub[i]/GetqABC(roi);}
   double GetqnAError(int roi){return sqrt(r[roi].qne)/r[roi].wnA;}
   int maxevents;
@@ -108,10 +110,53 @@ private:
   } r[20];
   int nrange = 0;
 };
-
-Framework::Framework(string fileName){
+bool Framework::AddFile(){
+  char buf[120];
+  if(fgets(buf,120,flist)==NULL) return false;
+  buf[strlen(buf)-1]=0;
+  cout<<buf<<endl;
+  string infile = buf;
+  cout<<"infile:"<<infile<<":"<<endl;
+  tf->Close();
+  tf = new TFile(infile.data(),"read");
+  tr = (TTree *) tf->Get("vnanalyzer/tree");
+  maxevents = tr->GetEntries();
+  tr->SetBranchAddress("Cent",&centval);
+  tr->SetBranchAddress("NtrkOff",&Noff);
+  tr->SetBranchAddress("ntrkflat",&ntrkval);
+  tr->SetBranchAddress("Vtx",&vtx);
+  tr->SetBranchAddress("epang",&epang);
+  tr->SetBranchAddress("eporig",&eporig);
+  tr->SetBranchAddress("qx",      &qx);
+  tr->SetBranchAddress("qy",      &qy);
+  tr->SetBranchAddress("q",       &q);
+  tr->SetBranchAddress("vn", &vn );
+  tr->SetBranchAddress("mult",    &epmult);
+  tr->SetBranchAddress("sumw",    &sumw);
+  tr->SetBranchAddress("sumw2",    &sumw2);
+  tr->SetBranchAddress("Run",     &runno_);
+  tr->SetBranchAddress("Rescor",  &rescor);
+  tr->SetBranchAddress("RescorErr",&rescorErr);
+  for(int iorder = 0; iorder<nqxorder; iorder++) {
+    tr->SetBranchAddress(Form("qxtrk%d",qxorders[iorder]),  &qxtrk[iorder]);
+    tr->SetBranchAddress(Form("qytrk%d",qxorders[iorder]),  &qytrk[iorder]);
+  }
+  tr->SetBranchAddress("qcnt",    &qcnt);
+  tr->SetBranchAddress("avpt",    &avpt);
+  return true;
+}
+Framework::Framework(string filelist){
   ran = new TRandom();
-  tf = new TFile(fileName.data(),"read");
+  cout<<"open: "<<filelist<<endl;
+  system("cat filelist.dat");
+  flist = fopen(filelist.data(),"r");
+  char buf[120];
+  fgets(buf,120,flist);
+  buf[strlen(buf)-1]=0;
+  cout<<buf<<endl;
+  string infile = buf;
+  cout<<"infile:"<<infile<<":"<<endl;
+  tf = new TFile(infile.data(),"read");
   tr = (TTree *) tf->Get("vnanalyzer/tree");
   maxevents = tr->GetEntries();
   tr->SetBranchAddress("Cent",&centval);
@@ -162,7 +207,7 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].minPt = qxtrk[0]->GetXaxis()->GetBinLowEdge(r[nrange].minPtBin);
   r[nrange].maxPt = qxtrk[0]->GetXaxis()->GetBinLowEdge(r[nrange].maxPtBin)+qxtrk[0]->GetXaxis()->GetBinWidth(r[nrange].maxPtBin);
   r[nrange].vn2d = new TH2D(Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.2,1.2,100,-1.2,1.2);
+			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d->SetOption("colz");
 
   ++nrange;
@@ -220,12 +265,12 @@ void Framework::AddEvent(int evt) {
     }
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
-    vnxEvt = -2;
-    vnyEvt = -2;
+    vnxEvt[i] = -2;
+    vnyEvt[i] = -2;
     if(qncnt>0) {
-      vnxEvt = qnx/qncnt;
-      vnyEvt = qny/qncnt;
-      r[i].vn2d->Fill(vnxEvt,vnyEvt);
+      vnxEvt[i] = qnx/qncnt;
+      vnyEvt[i] = qny/qncnt;
+      r[i].vn2d->Fill(vnxEvt[i],vnyEvt[i]);
       r[i].qn+=val;
       r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
       r[i].qnSub[isub]+=val;
