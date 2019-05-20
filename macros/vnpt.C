@@ -6,6 +6,7 @@
 #include "TCanvas.h"
 #include "TLatex.h"
 #include "TPaveText.h"
+#include "TH1I.h"
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
@@ -19,9 +20,30 @@ static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0
 
 TH1D * diffy[17];
 TH1D * diffx[17];
+TH2D * diffxy[17];
 
 TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double etamax = 0.8){
   int order = 2;
+  double runlist[200];
+  int runcount[200];
+  int nruns = 0;
+  TFile * fruns = new TFile("runs.root","read");
+  TH1I * iruns = (TH1I *) fruns->Get("runs");
+  for(int i = 1; i<iruns->GetNbinsX(); i++) {
+    if(iruns->GetBinContent(i)>1) {
+      cout<<"== "<<i<<"\t"<<iruns->GetBinLowEdge(i)<<endl;
+      runcount[nruns]=iruns->GetBinContent(i);
+      runlist[nruns++]=(int) (iruns->GetBinLowEdge(i)+0.9);
+    }
+  }
+  runlist[nruns]=runlist[nruns-1]+1;
+  TH1I * runs = new TH1I("runs","runs",nruns,runlist);
+  for(int i = 1; i<=runs->GetNbinsX(); i++) {
+    runs->SetBinContent(i,runcount[i-1]);
+    cout<<i<<"\t"<<runs->GetBinLowEdge(i)<<"\t"<<runs->GetBinContent(i)<<endl;
+  }
+  runs->Draw();
+  return 0;
   for(int i = 0; i<nptbins; i++) {
     diffx[i]=new TH1D(Form("diffx%d",i),Form("diffx%d",i),500,-1,1);
     diffy[i]=new TH1D(Form("diffy%d",i),Form("diffy%d",i),500,-1,1);
@@ -29,6 +51,11 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
     diffx[i]->SetYTitle("Events");
     diffy[i]->SetXTitle("(v_{2,y}^{obs,hfp}-v_{2,y}^{obs,hfm})/2");
     diffy[i]->SetYTitle("Events");
+
+    diffxy[i]=new TH2D(Form("diffxy%d",i),Form("diffxy%d",i),200,-1,1,200,-1,1);
+    diffxy[i]->SetXTitle("(v_{2,x}^{obs,hfp}-v_{2,x}^{obs,hfm})/2");
+    diffxy[i]->SetYTitle("(v_{2,x}^{obs,hfp}-v_{2,x}^{obs,hfm})/2");
+    diffxy[i]->SetOption("colz");
 
   }
   Framework * fm = new Framework();
@@ -60,6 +87,7 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
       if(fmx>-2&&fmy>-2&&fpx>-2&&fpy>-2) {
 	diffx[j]->Fill((fpx-fmx)/2.);
 	diffy[j]->Fill((fpy-fmy)/2.);
+	diffxy[j]->Fill((fpx-fmx)/2.,(fpy-fmy)/2.);
       }
     }
     ++count;
@@ -143,6 +171,7 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
   specp->SetLineColor(kRed);
   specp->SetMarkerColor(kRed);
   specp->Draw("same");
+  c->Print(Form("figures/vn_%d_%d.pdf",mincent,maxcent),"pdf");
   TCanvas * c2 = new TCanvas("vnm2d","vnm2d",1200,1200);
   c2->Divide(4,4);
   for(int i = 0; i<16; i++) {
@@ -156,6 +185,7 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
       lt->Draw();
     }
   }
+  c2->Print(Form("figures/vnm2d_%d_%d.pdf",mincent,maxcent),"pdf");
 
   TCanvas * c3 = new TCanvas("vnp2d","vnp2d",1200,1200);
   c3->Divide(4,4);
@@ -170,11 +200,13 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
       lt->Draw();
     }
   }
+  c3->Print(Form("figures/vnp2d_%d_%d.pdf",mincent,maxcent),"pdf");
 
   TCanvas * c4 = new TCanvas("diffx","diffx",1200,1200);
   c4->Divide(4,4);
   for(int i = 0; i<16; i++) {
     c4->cd(i+1);
+    diffx[i]->SetMaximum(pow(10,(int)log10(diffx[i]->GetMaximum())+1));
     diffx[i]->Draw();
     gPad->SetGrid(1,1);
     gPad->SetLogy();
@@ -186,14 +218,16 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
     TPaveText * pt2 = new TPaveText(0.2,0.85,0.6,0.93,"NDC");
     pt2->SetBorderSize(0);
     pt2->SetFillColor(kWhite);
-    pt2->AddText(Form("%3.1f < #eta < %3.1f; %d - %d%c",etamin, etamax, mincent,maxcent,'%'));
+    pt2->AddText(Form("%3.1f < |#eta| < %3.1f; %d - %d%c",etamin, etamax, mincent,maxcent,'%'));
     pt2->Draw();
   }
+  c4->Print(Form("figures/vnxdiff_%d_%d.pdf",mincent,maxcent),"pdf");
 
   TCanvas * c5 = new TCanvas("diffy","diffy",1200,1200);
   c5->Divide(4,4);
   for(int i = 0; i<16; i++) {
     c5->cd(i+1);
+    diffy[i]->SetMaximum(pow(10,(int)log10(diffy[i]->GetMaximum())+2));
     diffy[i]->Draw();
     gPad->SetGrid(1,1);
     gPad->SetLogy();
@@ -205,8 +239,36 @@ TGraphErrors * vnpt(int mincent=5,int maxcent = 10, double etamin = 0, double et
     TPaveText * pt2 = new TPaveText(0.2,0.85,0.6,0.93,"NDC");
     pt2->SetBorderSize(0);
     pt2->SetFillColor(kWhite);
-    pt2->AddText(Form("%3.1f < #eta < %3.1f; %d - %d%c",etamin, etamax, mincent,maxcent,'%'));
+    pt2->AddText(Form("%3.1f < !#eta! < %3.1f; %d - %d%c",etamin, etamax, mincent,maxcent,'%'));
     pt2->Draw();
+  }
+
+  TCanvas * c6 = new TCanvas("diffxy","diffxy",1200,1200);
+  c6->Divide(4,4);
+  for(int i = 0; i<16; i++) {
+    c6->cd(i+1);
+    diffxy[i]->Draw();
+    gPad->SetGrid(1,1);
+    TPaveText * pt = new TPaveText(0.2,0.2,0.6,0.27,"NDC");
+    pt->SetBorderSize(0);
+    pt->SetFillColor(kWhite);
+    pt->AddText(Form("%3.1f<p_{T}<%3.1f GeV/c",ptbins[i],ptbins[i+1]));
+    pt->Draw();
+    TPaveText * pt2 = new TPaveText(0.2,0.85,0.6,0.93,"NDC");
+    pt2->SetBorderSize(0);
+    pt2->SetFillColor(kWhite);
+    pt2->AddText(Form("%3.1f < !#eta! < %3.1f; %d - %d%c",etamin, etamax, mincent,maxcent,'%'));
+    pt2->Draw();
+  }
+  c6->Print(Form("figures/vnxydiff_%d_%d.pdf",mincent,maxcent),"pdf");
+
+  TCanvas * c7 = new TCanvas("cruns","cruns",1200,1000);
+  c7->cd();
+  TH1D * hruns = (TH1D *) fm->GetRuns();
+  hruns->Draw();
+  c7->Print(Form("figures/runs_%d_%d.pdf",mincent,maxcent),"pdf");
+  for(int i = 1; i<=hruns->GetNbinsX(); i++) {
+    if(hruns->GetBinContent(i)>0) cout<<(int) hruns->GetBinCenter(i)<<"\t"<<hruns->GetBinContent(i)<<endl;
   }
   return gm ;
 }
