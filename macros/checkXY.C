@@ -33,6 +33,9 @@ TH1I * runs;
 TH2D * hDiff[ncentbins][nptbins];
 TH1D * diffx[ncentbins][nptbins];
 TH1D * diffy[ncentbins][nptbins];
+TH1D * runqdifx[ncentbins][nptbins];
+TH1D * runqdify[ncentbins][nptbins];
+TH1D * runqdifcnt[ncentbins][nptbins];
 TH1I * hruns;
 double runlist[500];
 int nruns = 0;
@@ -50,6 +53,7 @@ void checkXY(string inlist="filelist.dat"){
   }
   runlist[nruns] = runlist[nruns-1]+1;
   hruns = new TH1I("hruns","hruns",nruns,runlist);
+
   double centval;
   int ntrkval;
   int Noff;
@@ -63,6 +67,7 @@ void checkXY(string inlist="filelist.dat"){
   //  system(Form("cat %s",inlist.data()));
   Framework * frame = new Framework(inlist);
   frame->SetMinMult(2);
+  frame->SetRuns(nruns,runlist);
   int centloc[500];
   int ptloc[500];
   int iloc = 0;
@@ -76,6 +81,7 @@ void checkXY(string inlist="filelist.dat"){
       ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-0.8, -0.4, ptbins[j], ptbins[j+1]);
       frame->SetROIEP(ROIm[i][j],HFp2,HFm2,trackmid2);
       mapm[i][j]=iloc;
+      ptloc[iloc] = j;
       centloc[iloc++]=i;
       hDiff[i][j] = new TH2D(Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
 			     Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),200,-1,1,200,-1,1);
@@ -83,6 +89,22 @@ void checkXY(string inlist="filelist.dat"){
       hDiff[i][j]->SetOption("colz");
       hDiff[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
       hDiff[i][j]->SetYTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
+
+      runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
+				Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      runqdifx[i][j]->SetDirectory(0);
+      runqdifx[i][j]->Sumw2();
+      runqdify[i][j] = new TH1D(Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
+				Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      runqdify[i][j]->SetDirectory(0);
+      runqdify[i][j]->Sumw2();
+      runqdifcnt[i][j] = new TH1D(Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
+				Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      runqdifcnt[i][j]->SetDirectory(0);
+      runqdifcnt[i][j]->Sumw2();
+      
+
+
     }
   }
   frame->ShowAllROIRanges();
@@ -97,7 +119,14 @@ void checkXY(string inlist="filelist.dat"){
     frame->AddEvent(i);
     for(int i = 0; i<ncentbins; i++) {
       for(int j = 0; j<nptbins; j++) {
+	if(frame->GetVnxEvt(mapp[i][j])<-1) continue;
+	if(frame->GetVnxEvt(mapm[i][j])<-1) continue;
+	if(frame->GetVnyEvt(mapp[i][j])<-1) continue;
+	if(frame->GetVnyEvt(mapm[i][j])<-1) continue;
  	hDiff[i][j]->Fill( (frame->GetVnxEvt(mapp[i][j])-frame->GetVnxEvt(mapm[i][j]))/2.,(frame->GetVnyEvt(mapp[i][j])-frame->GetVnyEvt(mapm[i][j]))/2.); 
+	runqdifx[i][j]->Fill(runno,(frame->GetVnxEvt(mapp[i][j])-frame->GetVnxEvt(mapm[i][j]))/2.);
+	runqdify[i][j]->Fill(runno,(frame->GetVnyEvt(mapp[i][j])-frame->GetVnyEvt(mapm[i][j]))/2.);
+	runqdifcnt[i][j]->Fill(runno);
       }
     }
     ++count;
@@ -110,7 +139,6 @@ void checkXY(string inlist="filelist.dat"){
   if(nfiles++<maxFiles && keepRunning == 1 && frame->AddFile()) goto rep;
   TFile * fout = new TFile("checkXY.root","recreate");
   fout->cd();
-  frame->GetRuns()->Write();
   TDirectory * subdirs[ncentbins];
   TDirectory * subsubdirs[ncentbins][nptbins];
   for(int i = 0; i<ncentbins; i++) {
@@ -122,11 +150,11 @@ void checkXY(string inlist="filelist.dat"){
       subsubdirs[i][j] = subdirs[i]->mkdir(Form("%03.1f_%03.1f",ptbins[j],ptbins[j+1]));
     }
   }
-  for(int i = 0; i<frame->GetNrange(); i++) {
-    subsubdirs[centloc[i]][ptloc[i]]->cd();
-    ((TH2D *)frame->Get2d(i))->Write();
-    ((TH1D *)frame->GetMult(i))->Write();
-  }
+   for(int i = 0; i<frame->GetNrange(); i++) {
+     subsubdirs[centloc[i]][ptloc[i]]->cd();
+     ((TH2D *)frame->Get2d(i))->Write();
+     ((TH1D *)frame->GetMult(i))->Write();
+   }
   TCanvas * clow = new TCanvas("clow","clow",1300,700);
   clow->Divide(2);
   clow->cd(1);
@@ -198,7 +226,14 @@ void checkXY(string inlist="filelist.dat"){
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
-      hDiff[i][j]->Write();
+      hDiff[i][j]->Write("diff2d");
+      runqdifx[i][j]->Write("qdifx");
+      runqdify[i][j]->Write("qdify");
+      runqdifcnt[i][j]->Write("qdifcnt");
     }
   }
+  for(int i = 0; i<frame->GetNrange(); i++) {
+    frame->SaveFrameworkRuns(i,subsubdirs[centloc[i]][ptloc[i]]);
+  }
+
 }
