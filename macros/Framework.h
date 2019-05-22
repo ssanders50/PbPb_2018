@@ -19,10 +19,12 @@ string efffile = "eff.root";
 #endif
 using namespace hi;
 using namespace std;
-  static const int nqxorder = 1;
-  int qxorders[nqxorder]={2};
-static uint minRunRange = 326381;
-static uint maxRunRange = 327565;
+static const int nqxorder = 1;
+int qxorders[nqxorder]={2};
+static const uint minRunRange = 326381;
+static const uint maxRunRange = 327565;
+static const int MAXROI = 500;
+static const int MAXRUNS = 500; 
 class Framework{
 public:
   Framework(string filelist="filelist.dat");
@@ -58,12 +60,14 @@ public:
   void SetMaxMult(int val){maxMult = val;}
   void SetMinRun(int val){minRun = val;}
   void SetMaxRun(int val){maxRun = val;}
-
+  void SetRuns(int nruns, double * runs); 
+  void SaveFrameworkRuns(int roi, TDirectory * dir);
   FILE * flist;
 private:
+    TH1D * runbins=NULL;
   TRandom * ran;
-  double vnxEvt[500];
-  double vnyEvt[500];
+  double vnxEvt[MAXROI];
+  double vnyEvt[MAXROI];
   double GetVnSub(int roi,int i) {return r[roi].qnSub[i]/r[roi].wnASub[i]/GetqABC(roi);}
   double GetqnAError(int roi){return sqrt(r[roi].qne)/r[roi].wnA;}
   int maxevents;
@@ -93,7 +97,12 @@ private:
   TH2F * qytrk[7]={nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr};
   TH2F * qcnt=nullptr;
   TH2F * avpt=nullptr;
-  TH1D * runs;
+  TH1D * runs=NULL;
+  TH1D * runcnt;
+  TH1D * runqx;
+  TH1D * runqy;
+  int nruns;
+  double runlist[MAXRUNS];
   struct range {
     int order;
     int orderIndx;
@@ -130,9 +139,33 @@ private:
     double wnASub[10]={0,0,0,0,0,0,0,0,0,0};
     TH2D * vn2d;
     TH1D * mult;
+    TH1D * runcnt;
+    TH1D * runqx;
+    TH1D * runqy;
   } r[500];
   int nrange = 0;
 };
+void Framework::SetRuns(int nr, double * runl){
+  runs = new TH1D("FrameworkRuns","FrameworkRuns",nr,runl);
+  runs->SetDirectory(0);
+  nruns = nr;
+  for(int i = 0; i<=nr; i++) runlist[i]=runl[i];
+}
+void Framework::SaveFrameworkRuns(int roi, TDirectory * dir){
+  TDirectory * savedir = gDirectory;
+  TDirectory * newdir=NULL;
+  TDirectory * chk = (TDirectory *) dir->Get("RunAverages"); 
+  if(chk==NULL)  {
+    newdir = (TDirectory *) dir->mkdir("RunAverages");
+  } else {
+    newdir = chk;
+  }
+  newdir->cd();
+  r[roi].runcnt->Write(Form("cnt_%03.1f_%03.1f",r[roi].minEta,r[roi].maxEta));
+  r[roi].runqx->Write(Form("qx_%03.1f_%03.1f",r[roi].minEta,r[roi].maxEta));
+  r[roi].runqy->Write(Form("qy_%03.1f_%03.1f",r[roi].minEta,r[roi].maxEta));
+  savedir->cd();
+}
 bool Framework::AddFile(){
   char buf[120];
   if(fgets(buf,120,flist)==NULL) return false;
@@ -235,6 +268,20 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].mult = new TH1D(Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
 			    Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),120,0,120);
   r[nrange].mult->SetDirectory(0);
+  if(runs!= NULL) {
+    r[nrange].runcnt = new TH1D(Form("runcnt_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+				Form("runcnt_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nruns,runlist);
+    r[nrange].runcnt->SetDirectory(0);
+    r[nrange].runcnt->Sumw2();
+    r[nrange].runqx = new TH1D(Form("runqx_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			       Form("runqx_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nruns,runlist);
+    r[nrange].runqx->SetDirectory(0);
+    r[nrange].runqx->Sumw2();
+    r[nrange].runqy = new TH1D(Form("runqy_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			       Form("runqy_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nruns,runlist);
+    r[nrange].runqy->SetDirectory(0);
+    r[nrange].runqy->Sumw2();
+  }
   ++nrange;
   return nrange-1;
 } 
@@ -292,12 +339,12 @@ void Framework::AddEvent(int evt) {
       }
     }
     r[i].mult->Fill(qncnt);
+    vnxEvt[i] = -2;
+    vnyEvt[i] = -2;
     if(minMult>0 && qncnt<minMult) continue;
     if(maxMult>0 && qncnt>maxMult) continue;
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
-    vnxEvt[i] = -2;
-    vnyEvt[i] = -2;
     if(qncnt>0) {
       vnxEvt[i] = qnx/qncnt;
       vnyEvt[i] = qny/qncnt;
@@ -326,6 +373,12 @@ void Framework::AddEvent(int evt) {
       r[i].wBC += wB*wC;
       r[i].wnA+=qncnt*wA;
       r[i].wnASub[isub]+=qncnt*wA;
+      if(runs!=NULL) {
+	int runbin = runs->FindBin(runno_);
+	r[i].runcnt->Fill(runno_);
+	r[i].runqx->Fill(runno_,vnxEvt[i]);
+	r[i].runqy->Fill(runno_,vnyEvt[i]);
+      }
     }
   }
 }
