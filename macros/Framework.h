@@ -21,14 +21,15 @@ using namespace hi;
 using namespace std;
   static const int nqxorder = 1;
   int qxorders[nqxorder]={2};
-static int minRun = 326381;
-static int maxRun = 327565;
+static uint minRunRange = 326381;
+static uint maxRunRange = 327565;
 class Framework{
 public:
   Framework(string filelist="filelist.dat");
   bool AddFile();
   int GetN(){return maxevents;}
   void GetEntry(int i){tr->GetEntry(i);}
+  int GetNrange(){return nrange;}
   int SetROIRange(int order, int minCent, int maxCent, double minEta, double maxEta, double minPt, double maxPt);
   void ShowAllROIRanges();
   void SetROIEP(int roi, int EPA, int EPB, int EPC, int EPA2=-1, int EPB2=-1, int EPC2 = -1);
@@ -41,9 +42,23 @@ public:
   double GetqABC(int roi);
   TH1D * GetSpectra(int roi, bool effCorrect = true);
   TH2D * Get2d(int roi){return r[roi].vn2d;}
+  int GetMinCent(int roi){return r[roi].minCent;}
+  int GetMaxCent(int roi){return r[roi].maxCent;}
+  int GetMinMult(){return minMult;}
+  int GetMaxMult(){return maxMult;}
+  int GetMinRun(){return minRun;}
+  int GetMaxRun(){return maxRun;}
+
   TH1D * GetRuns(){return runs;}
+  TH1D * GetMult(int roi){return r[roi].mult;}
   double GetVnxEvt(int roi){return vnxEvt[roi];}
   double GetVnyEvt(int roi){return vnyEvt[roi];}
+  uint GetRunno(int evt){GetEntry(evt); return runno_;}
+  void SetMinMult(int val){minMult = val;}
+  void SetMaxMult(int val){maxMult = val;}
+  void SetMinRun(int val){minRun = val;}
+  void SetMaxRun(int val){maxRun = val;}
+
   FILE * flist;
 private:
   TRandom * ran;
@@ -57,6 +72,10 @@ private:
   double centval;
   int ntrkval;
   int Noff;
+  int minMult = -1;
+  int maxMult = -1;
+  uint minRun = 0;
+  uint maxRun = 0;
   double vtx;
   double epang[NumEPNames];
   Double_t eporig[NumEPNames];
@@ -110,6 +129,7 @@ private:
     double qnSube[10]={0,0,0,0,0,0,0,0,0,0};
     double wnASub[10]={0,0,0,0,0,0,0,0,0,0};
     TH2D * vn2d;
+    TH1D * mult;
   } r[500];
   int nrange = 0;
 };
@@ -182,7 +202,7 @@ Framework::Framework(string filelist){
   }
   tr->SetBranchAddress("qcnt",    &qcnt);
   tr->SetBranchAddress("avpt",    &avpt);
-  runs = new TH1D("runs","runs",maxRun-minRun+1,minRun,maxRun);
+  runs = new TH1D("runs","runs",maxRunRange-minRunRange+1,minRunRange,maxRunRange);
   runs->SetDirectory(0);
 }
 int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, double maxEta, double minPt, double maxPt) {
@@ -200,9 +220,9 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].order = order;
   r[nrange].minCent = minCent;
   r[nrange].maxCent = maxCent;
-  r[nrange].minEtaBin = qxtrk[0]->GetYaxis()->FindBin(minEta);
+  r[nrange].minEtaBin = qxtrk[0]->GetYaxis()->FindBin(minEta+0.01);
   r[nrange].maxEtaBin = qxtrk[0]->GetYaxis()->FindBin(maxEta-0.01);
-  r[nrange].minPtBin = qxtrk[0]->GetXaxis()->FindBin(minPt);
+  r[nrange].minPtBin = qxtrk[0]->GetXaxis()->FindBin(minPt+0.01);
   r[nrange].maxPtBin = qxtrk[0]->GetXaxis()->FindBin(maxPt-0.01);
   r[nrange].minEta = qxtrk[0]->GetYaxis()->GetBinLowEdge(r[nrange].minEtaBin);
   r[nrange].maxEta = qxtrk[0]->GetYaxis()->GetBinLowEdge(r[nrange].maxEtaBin)+qxtrk[0]->GetYaxis()->GetBinWidth(r[nrange].maxEtaBin);
@@ -212,6 +232,9 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
 			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d->SetOption("colz");
   r[nrange].vn2d->SetDirectory(0);
+  r[nrange].mult = new TH1D(Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			    Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),120,0,120);
+  r[nrange].mult->SetDirectory(0);
   ++nrange;
   return nrange-1;
 } 
@@ -238,6 +261,9 @@ void Framework::SetROIEP(int roi, int EPA, int EPB, int EPC, int EPA2, int EPB2,
 
 void Framework::AddEvent(int evt) {
   GetEntry(evt);
+  runs->Fill((double) runno_);
+  if(minRun>0 && runno_<minRun) return;
+  if(maxRun>0 && runno_>maxRun) return;
   for(int i = 0; i<nrange; i++) {
     if(r[i].A<0) {
       cout<<"Event planes have not yet been initialized for ROI # "<<i<<endl;
@@ -265,6 +291,9 @@ void Framework::AddEvent(int evt) {
 	pt+=avpt->GetBinContent(k,j);
       }
     }
+    r[i].mult->Fill(qncnt);
+    if(minMult>0 && qncnt<minMult) continue;
+    if(maxMult>0 && qncnt>maxMult) continue;
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
     vnxEvt[i] = -2;
@@ -298,7 +327,6 @@ void Framework::AddEvent(int evt) {
       r[i].wnA+=qncnt*wA;
       r[i].wnASub[isub]+=qncnt*wA;
     }
-    if(i==0) runs->Fill((double) runno_);
   }
 }
 double Framework::GetqABC(int roi) {
@@ -310,6 +338,7 @@ double Framework::GetqABC(int roi) {
 
 TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
   debug = false;
+  TDirectory * dirsave = gDirectory;
   TH2D * spec;
   TH2D * heff=0;
   int minCent = r[roi].minCent;
@@ -323,7 +352,7 @@ TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
   double etamax = r[roi].maxEta;
   int ietamin = spec->GetYaxis()->FindBin(etamin+0.01);
   int ietamax = spec->GetYaxis()->FindBin(etamax-0.01);
-  TH1D * spec1draw = (TH1D *) spec->ProjectionX(Form("spec1draw_%d_%d_%4.1f_%4.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
+  TH1D * spec1draw = (TH1D *) spec->ProjectionX(Form("spec1draw_%d_%d_%03.1f_%03.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
   if(effCorrect){
     TFile * feff = new TFile(efffile.data());
     double avcent = (minCent+maxCent)/2.;
@@ -350,7 +379,8 @@ TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
     }
     feff->Close(); 
   }
-  TH1D * spec1d = (TH1D *) spec->ProjectionX(Form("spec1d_%d_%d_%4.1f_%4.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
+  TH1D * spec1d = (TH1D *) spec->ProjectionX(Form("spec1d_%d_%d_%03.1f_%03.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
+  spec1d->SetDirectory(0);
   double bineta = 0.199;
   for(int i = 0; i<spec1d->GetNbinsX(); i++) {
     double deta = etamax-etamin;
@@ -369,6 +399,7 @@ TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
   spec1d->SetLineColor(kBlue);
   spec->Delete();
   debug = false;
+  dirsave->cd();
   return spec1d;
 }
 
