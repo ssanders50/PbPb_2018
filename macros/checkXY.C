@@ -16,7 +16,7 @@
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
-static const int maxFiles = 10000;
+static const int maxFiles = 10;
 static volatile int keepRunning = 1;
 void intHandler(int dummy){
   keepRunning = 0;
@@ -68,6 +68,7 @@ void checkXY(string inlist="filelist.dat"){
   Framework * frame = new Framework(inlist);
   frame->SetMinMult(2);
   frame->SetRuns(nruns,runlist);
+  if(!frame->LoadOffsets("checkXY_offsets.root")) cout<<"Failed to open offsets file"<<endl;
   int centloc[500];
   int ptloc[500];
   int iloc = 0;
