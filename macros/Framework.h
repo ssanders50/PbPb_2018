@@ -62,6 +62,8 @@ public:
   void SetMaxRun(int val){maxRun = val;}
   void SetRuns(int nruns, double * runs); 
   void SaveFrameworkRuns(int roi, TDirectory * dir);
+  bool LoadOffsets(string offname);
+
   FILE * flist;
 private:
     TH1D * runbins=NULL;
@@ -72,6 +74,7 @@ private:
   double GetqnAError(int roi){return sqrt(r[roi].qne)/r[roi].wnA;}
   int maxevents;
   TFile * tf;
+  TFile *foff;
   TTree * tr;
   double centval;
   int ntrkval;
@@ -142,9 +145,17 @@ private:
     TH1D * runcnt;
     TH1D * runqx;
     TH1D * runqy;
+    TH1D * qdifx;
+    TH1D * qdify;
   } r[500];
   int nrange = 0;
 };
+bool Framework::LoadOffsets(string offname){
+  foff = new TFile(offname.data(),"read"); 
+  if(foff->IsZombie()) return false;
+
+  return true;
+}
 void Framework::SetRuns(int nr, double * runl){
   runs = new TH1D("FrameworkRuns","FrameworkRuns",nr,runl);
   runs->SetDirectory(0);
@@ -282,6 +293,14 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].runqy->SetDirectory(0);
     r[nrange].runqy->Sumw2();
   }
+  if(!foff->IsZombie()) {
+    r[nrange].qdifx = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qx_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
+    r[nrange].qdifx->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
+    r[nrange].qdifx->SetDirectory(0);
+    r[nrange].qdify = (TH1D *)foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
+    r[nrange].qdify->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
+    r[nrange].qdify->SetDirectory(0);
+  }
   ++nrange;
   return nrange-1;
 } 
@@ -338,6 +357,7 @@ void Framework::AddEvent(int evt) {
 	pt+=avpt->GetBinContent(k,j);
       }
     }
+    pt/=qncnt;
     r[i].mult->Fill(qncnt);
     vnxEvt[i] = -2;
     vnyEvt[i] = -2;
@@ -346,8 +366,25 @@ void Framework::AddEvent(int evt) {
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
     if(qncnt>0) {
+      double qnxoff = 0;
+      double qnyoff = 0;
+      int runbin = 0;
       vnxEvt[i] = qnx/qncnt;
-      vnyEvt[i] = qny/qncnt;
+      vnyEvt[i] = qny/qncnt ;
+      if(runs!=NULL) {
+	runbin = runs->FindBin(runno_);
+	if(!foff->IsZombie()){
+	  qnxoff = r[i].qdifx->GetBinContent(runbin);
+	  qnyoff = r[i].qdify->GetBinContent(runbin);
+	  vnxEvt[i]-=qnxoff;
+	  vnyEvt[i]-=qnyoff;
+	}
+	r[i].runcnt->Fill(runno_);
+	r[i].runqx->Fill(runno_,vnxEvt[i]);
+	r[i].runqy->Fill(runno_,vnyEvt[i]);
+      }
+      vnxEvt[i] = qnx/qncnt - qnxoff;
+      vnyEvt[i] = qny/qncnt - qnyoff;
       r[i].vn2d->Fill(vnxEvt[i],vnyEvt[i]);
       r[i].qn+=val;
       r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
@@ -373,12 +410,6 @@ void Framework::AddEvent(int evt) {
       r[i].wBC += wB*wC;
       r[i].wnA+=qncnt*wA;
       r[i].wnASub[isub]+=qncnt*wA;
-      if(runs!=NULL) {
-	int runbin = runs->FindBin(runno_);
-	r[i].runcnt->Fill(runno_);
-	r[i].runqx->Fill(runno_,vnxEvt[i]);
-	r[i].runqy->Fill(runno_,vnyEvt[i]);
-      }
     }
   }
 }
