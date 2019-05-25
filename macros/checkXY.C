@@ -11,12 +11,12 @@
 #include "stdio.h"
 #include "TEllipse.h"
 #include "TLine.h"
-
+#include "TPaveText.h"
 #include "Framework.h"
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
-static const int maxFiles = 10;
+static const int maxFiles = 2000;
 static volatile int keepRunning = 1;
 void intHandler(int dummy){
   keepRunning = 0;
@@ -27,6 +27,12 @@ static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0
 			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10.};
 static const int ncentbins = 13;
 static const int centbins[]={0,5,10,15,20,25,30,35,40,50,60,70,80,100};
+static const int chkcbin = 9;
+static const int chkptbin = 0;
+//static const int nptbins = 1;
+//static const float ptbins[]={0.3,  0.5};
+//static const int ncentbins = 1;
+//static const int centbins[]={50,60};
 static const int Order = 2;
 FILE * flist;
 TH1I * runs;
@@ -68,7 +74,9 @@ void checkXY(string inlist="filelist.dat"){
   Framework * frame = new Framework(inlist);
   frame->SetMinMult(2);
   frame->SetRuns(nruns,runlist);
-  if(!frame->LoadOffsets("checkXY_offsets.root")) cout<<"Failed to open offsets file"<<endl;
+  if(!frame->LoadOffsets("checkXY_offsets.root")) {
+    cout<<"Failed to open offsets file"<<endl; }
+  
   int centloc[500];
   int ptloc[500];
   int iloc = 0;
@@ -118,16 +126,20 @@ void checkXY(string inlist="filelist.dat"){
     int runno = frame->GetRunno(i);
     int irun = hruns->FindBin(runno+0.1);
     frame->AddEvent(i);
-    for(int i = 0; i<ncentbins; i++) {
+    for(int k = 0; k<ncentbins; k++) {
       for(int j = 0; j<nptbins; j++) {
-	if(frame->GetVnxEvt(mapp[i][j])<-1) continue;
-	if(frame->GetVnxEvt(mapm[i][j])<-1) continue;
-	if(frame->GetVnyEvt(mapp[i][j])<-1) continue;
-	if(frame->GetVnyEvt(mapm[i][j])<-1) continue;
- 	hDiff[i][j]->Fill( (frame->GetVnxEvt(mapp[i][j])-frame->GetVnxEvt(mapm[i][j]))/2.,(frame->GetVnyEvt(mapp[i][j])-frame->GetVnyEvt(mapm[i][j]))/2.); 
-	runqdifx[i][j]->Fill(runno,(frame->GetVnxEvt(mapp[i][j])-frame->GetVnxEvt(mapm[i][j]))/2.);
-	runqdify[i][j]->Fill(runno,(frame->GetVnyEvt(mapp[i][j])-frame->GetVnyEvt(mapm[i][j]))/2.);
-	runqdifcnt[i][j]->Fill(runno);
+	if(frame->GetVnxEvt(mapp[k][j])<-1) continue;
+	if(frame->GetVnxEvt(mapm[k][j])<-1) continue;
+	if(frame->GetVnyEvt(mapp[k][j])<-1) continue;
+	if(frame->GetVnyEvt(mapm[k][j])<-1) continue;
+	double xdiffoff = frame->GetXdiff(mapp[k][j],runno);
+	double ydiffoff = frame->GetYdiff(mapp[k][j],runno);
+	double xdiff = (frame->GetVnxEvt(mapp[k][j])-frame->GetVnxEvt(mapm[k][j]))/2.;
+	double ydiff = (frame->GetVnyEvt(mapp[k][j])-frame->GetVnyEvt(mapm[k][j]))/2.;
+ 	hDiff[k][j]->Fill(xdiff-xdiffoff ,ydiff-ydiffoff); 
+	runqdifx[k][j]->Fill(runno,xdiff-xdiffoff);
+	runqdify[k][j]->Fill(runno,ydiff-ydiffoff);
+	runqdifcnt[k][j]->Fill(runno);
       }
     }
     ++count;
@@ -156,10 +168,10 @@ void checkXY(string inlist="filelist.dat"){
      ((TH2D *)frame->Get2d(i))->Write();
      ((TH1D *)frame->GetMult(i))->Write();
    }
-  TCanvas * clow = new TCanvas("clow","clow",1300,700);
-  clow->Divide(2);
+  TCanvas * clow = new TCanvas("clow","clow",1300,1300);
+  clow->Divide(2,2);
   clow->cd(1);
-  frame->Get2d(mapm[12][0])->Draw();
+  frame->Get2d(mapm[chkcbin][chkptbin])->Draw();
   gPad->SetGrid(1,1);
   TLine * l1a = new TLine(-1.4,0,1.4,0);
   l1a->SetLineWidth(2);
@@ -174,7 +186,7 @@ void checkXY(string inlist="filelist.dat"){
   el1a->SetLineColor(kRed);
   el1a->Draw();
   clow->cd(2);
-  frame->Get2d(mapp[12][0])->Draw();
+  frame->Get2d(mapp[chkcbin][chkptbin])->Draw();
   gPad->SetGrid(1,1);
   TLine * l1b = new TLine(-1.4,0,1.4,0);
   l1b->SetLineWidth(2);
@@ -188,41 +200,58 @@ void checkXY(string inlist="filelist.dat"){
   el1b->SetLineStyle(2);
   el1b->SetLineColor(kRed);
   el1b->Draw();
-
-
-  TCanvas * chigh = new TCanvas("chigh","chigh",1300,680);
-  chigh->Divide(2);
-  chigh->cd(1);
-  frame->Get2d(mapm[12][3])->Draw();
+  clow->cd(3);
+  hDiff[chkcbin][chkptbin]->Draw();
   gPad->SetGrid(1,1);
-  TLine * l3a = new TLine(-1.4,0,1.4,0);
-  l3a->SetLineWidth(2);
-  l3a->Draw();
-  TLine * l4a = new TLine(0,-1.4,0,1.4);
-  l4a->SetLineWidth(2);
-  l4a->Draw();
-  TEllipse * el2a = new TEllipse(0,0,1,1);
-  el2a->SetFillStyle(0);
-  el2a->SetLineWidth(3);
-  el2a->SetLineStyle(2);
-  el2a->SetLineColor(kRed);
-  el2a->Draw();
-  chigh->cd(2);
-  frame->Get2d(mapp[12][3])->Draw();
-  chigh->SetGrid(1,1);
-  gPad->SetGrid(1,1);
-  TLine * l3b = new TLine(-1.4,0,1.4,0);
-  l3b->SetLineWidth(2);
-  l3b->Draw();
-  TLine * l4b = new TLine(0,-1.4,0,1.4);
-  l4b->SetLineWidth(2);
-  l4b->Draw();
-  TEllipse * el2b = new TEllipse(0,0,1,1);
-  el2b->SetFillStyle(0);
-  el2b->SetLineWidth(3);
-  el2b->SetLineStyle(2);
-  el2b->SetLineColor(kRed);
-  el2b->Draw();
+  TLine * l1c = new TLine(-1.4,0,1.4,0);
+  l1c->SetLineWidth(2);
+  l1c->Draw();
+  TLine * l2c = new TLine(0,-1.4,0,1.4);
+  l2c->SetLineWidth(2);
+  l2c->Draw();
+  clow->cd(4);
+  TPaveText * tp = new TPaveText(0.2,0.2,0.8,0.8);
+  tp->SetBorderSize(0);
+  tp->SetFillColor(kWhite);
+  tp->AddText("2018 PbPb");
+  tp->AddText(Form("%d - %d%c",centbins[chkcbin],centbins[chkcbin+1],'%'));
+  tp->AddText(Form("%3.1f < p_{T} <  %3.1f GeV/c",ptbins[chkptbin],ptbins[chkptbin+1]));
+  tp->Draw();
+  clow->Print("chckXY.pdf","pdf");
+
+  // TCanvas * chigh = new TCanvas("chigh","chigh",1300,680);
+  // chigh->Divide(2);
+  // chigh->cd(1);
+  // frame->Get2d(mapm[12][3])->Draw();
+  // gPad->SetGrid(1,1);
+  // TLine * l3a = new TLine(-1.4,0,1.4,0);
+  // l3a->SetLineWidth(2);
+  // l3a->Draw();
+  // TLine * l4a = new TLine(0,-1.4,0,1.4);
+  // l4a->SetLineWidth(2);
+  // l4a->Draw();
+  // TEllipse * el2a = new TEllipse(0,0,1,1);
+  // el2a->SetFillStyle(0);
+  // el2a->SetLineWidth(3);
+  // el2a->SetLineStyle(2);
+  // el2a->SetLineColor(kRed);
+  // el2a->Draw();
+  // chigh->cd(2);
+  // frame->Get2d(mapp[12][3])->Draw();
+  // chigh->SetGrid(1,1);
+  // gPad->SetGrid(1,1);
+  // TLine * l3b = new TLine(-1.4,0,1.4,0);
+  // l3b->SetLineWidth(2);
+  // l3b->Draw();
+  // TLine * l4b = new TLine(0,-1.4,0,1.4);
+  // l4b->SetLineWidth(2);
+  // l4b->Draw();
+  // TEllipse * el2b = new TEllipse(0,0,1,1);
+  // el2b->SetFillStyle(0);
+  // el2b->SetLineWidth(3);
+  // el2b->SetLineStyle(2);
+  // el2b->SetLineColor(kRed);
+  // el2b->Draw();
 
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
