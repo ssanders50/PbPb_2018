@@ -23,17 +23,18 @@ void intHandler(int dummy){
   keepRunning = 0;
 }
 TFile * tf=NULL;
-static const int nptbins = 17;
-static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0,
-			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10.};
+static const int nptbins = 14;
+static const float ptbinsMin[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0, 2.5,  3.0,  3.5, 0.3, 1.0};
+static const float ptbinsMax[]={0.4, 0.5, 0.6,  0.8,  1.0, 1.25,  1.50,   2.0,  2.5, 3.0,  3.5,  4.0, 3.0, 3.0};
 static const int ncentbins = 13;
 static const int centbins[]={0,5,10,15,20,25,30,35,40,50,60,70,80,100};
 static const int Order = 2;
 FILE * flist;
 TH1I * runs;
 TH2D * hDiff[ncentbins][nptbins];
-TH1D * diffx[ncentbins][nptbins];
-TH1D * diffy[ncentbins][nptbins];
+TH1D * smear[ncentbins][nptbins];
+TH1D * smearX[ncentbins][nptbins];
+TH1D * smearY[ncentbins][nptbins];
 TH1D * runqdifx[ncentbins][nptbins];
 TH1D * runqdify[ncentbins][nptbins];
 TH1D * runqdifcnt[ncentbins][nptbins];
@@ -80,33 +81,51 @@ void checkXY(string inlist="filelist.dat"){
   int iloc = 0;
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
-      ROIp[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],0.4, 0.8, ptbins[j], ptbins[j+1]);
+      ROIp[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],0.4, 0.8, ptbinsMin[j], ptbinsMax[j]);
       frame->SetROIEP(ROIp[i][j],HFm2,HFp2,trackmid2);
       mapp[i][j]=iloc;
       ptloc[iloc] = j;
       centloc[iloc++]=i;
-      ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-0.8, -0.4, ptbins[j], ptbins[j+1]);
+      ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-0.8, -0.4, ptbinsMin[j], ptbinsMax[j]);
       frame->SetROIEP(ROIm[i][j],HFp2,HFm2,trackmid2);
       mapm[i][j]=iloc;
       ptloc[iloc] = j;
       centloc[iloc++]=i;
-      hDiff[i][j] = new TH2D(Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
-			     Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),200,-1,1,200,-1,1);
+      hDiff[i][j] = new TH2D(Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
       hDiff[i][j]->SetDirectory(0);
       hDiff[i][j]->SetOption("colz");
       hDiff[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
       hDiff[i][j]->SetYTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
 
-      runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
-				Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      smear[i][j] = new TH1D(Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,0,1.4);
+      smear[i][j]->SetDirectory(0);
+      smear[i][j]->SetXTitle("smear (r)");
+      smear[i][j]->SetYTitle("counts");
+
+      smearX[i][j] = new TH1D(Form("smearX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("smearX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,-1.4,1.4);
+      smearX[i][j]->SetDirectory(0);
+      smearX[i][j]->SetXTitle("smear (x)");
+      smearX[i][j]->SetYTitle("counts");
+
+      smearY[i][j] = new TH1D(Form("smearY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("smearY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,-1.4,1.4);
+      smearY[i][j]->SetDirectory(0);
+      smearY[i][j]->SetXTitle("smear (y)");
+      smearY[i][j]->SetYTitle("counts");
+
+      runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdifx[i][j]->SetDirectory(0);
       runqdifx[i][j]->Sumw2();
-      runqdify[i][j] = new TH1D(Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
-				Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      runqdify[i][j] = new TH1D(Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdify[i][j]->SetDirectory(0);
       runqdify[i][j]->Sumw2();
-      runqdifcnt[i][j] = new TH1D(Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),
-				Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbins[j],ptbins[j+1]),nruns,runlist);
+      runqdifcnt[i][j] = new TH1D(Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdifcnt[i][j]->SetDirectory(0);
       runqdifcnt[i][j]->Sumw2();
       
@@ -135,6 +154,9 @@ void checkXY(string inlist="filelist.dat"){
 	double xdiff = (frame->GetVnxEvt(mapp[k][j])-frame->GetVnxEvt(mapm[k][j]))/2.;
 	double ydiff = (frame->GetVnyEvt(mapp[k][j])-frame->GetVnyEvt(mapm[k][j]))/2.;
  	hDiff[k][j]->Fill(xdiff-xdiffoff ,ydiff-ydiffoff); 
+	smear[k][j]->Fill(sqrt(pow(xdiff-xdiffoff,2)+pow(ydiff-ydiffoff,2)));
+	smearX[k][j]->Fill(xdiff-xdiffoff);
+	smearY[k][j]->Fill(ydiff-ydiffoff);
 	runqdifx[k][j]->Fill(runno,xdiff-xdiffoff);
 	runqdify[k][j]->Fill(runno,ydiff-ydiffoff);
 	runqdifcnt[k][j]->Fill(runno);
@@ -158,13 +180,18 @@ void checkXY(string inlist="filelist.dat"){
     TH1D * sp = frame->GetSpectra(ROIp[0][i]);
     sp->Write();
     for(int j = 0; j<nptbins; j++) {
-      subsubdirs[i][j] = subdirs[i]->mkdir(Form("%03.1f_%03.1f",ptbins[j],ptbins[j+1]));
+      subsubdirs[i][j] = subdirs[i]->mkdir(Form("%03.1f_%03.1f",ptbinsMin[j],ptbinsMax[j]));
     }
   }
    for(int i = 0; i<frame->GetNrange(); i++) {
      subsubdirs[centloc[i]][ptloc[i]]->cd();
      ((TH2D *)frame->Get2d(i))->Write();
+     ((TH1D *)frame->Get1d(i))->Write();
+     TH1D * tmp = (TH1D *) frame->Get1dMult(i);
+     tmp->Divide((TH1D *)frame->Get1d(i));
+     tmp->Write();
      ((TH1D *)frame->GetMult(i))->Write();
+
    }
 
 
@@ -172,6 +199,9 @@ void checkXY(string inlist="filelist.dat"){
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
       hDiff[i][j]->Write("diff2d");
+      smear[i][j]->Write("smearR");
+      smearX[i][j]->Write("smearX");
+      smearY[i][j]->Write("smearY");
       runqdifx[i][j]->Write("qdifx");
       runqdify[i][j]->Write("qdify");
       runqdifcnt[i][j]->Write("qdifcnt");
@@ -186,7 +216,7 @@ void checkXY(string inlist="filelist.dat"){
 
 void   CreatePlots(int icent, int ipt){
 
-  string cname = Form("xy_%d_%d_%3.1f_%3.1f",centbins[icent],centbins[icent+1],ptbins[ipt],ptbins[ipt+1]);
+  string cname = Form("xy_%d_%d_%3.1f_%3.1f",centbins[icent],centbins[icent+1],ptbinsMin[ipt],ptbinsMax[ipt]);
   TCanvas * clow = new TCanvas(cname.data(),cname.data(),1300,1300);
   clow->Divide(2,2);
   clow->cd(1);
@@ -235,7 +265,7 @@ void   CreatePlots(int icent, int ipt){
   tp->SetFillColor(kWhite);
   tp->AddText("2018 PbPb");
   tp->AddText(Form("%d - %d%c",centbins[icent],centbins[icent+1],'%'));
-  tp->AddText(Form("%3.1f < p_{T} <  %3.1f GeV/c",ptbins[ipt],ptbins[ipt+1]));
+  tp->AddText(Form("%3.1f < p_{T} <  %3.1f GeV/c",ptbinsMin[ipt],ptbinsMax[ipt]));
   tp->Draw();
   clow->Print(Form("figures/checkXY/%s.pdf",clow->GetName()),"pdf");
   clow->Close();
