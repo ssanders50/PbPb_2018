@@ -44,6 +44,8 @@ public:
   double GetqABC(int roi);
   TH1D * GetSpectra(int roi, bool effCorrect = true);
   TH2D * Get2d(int roi){return r[roi].vn2d;}
+  TH1D * Get1d(int roi){return r[roi].vn1d;}
+  TH1D * Get1dMult(int roi){return r[roi].vn1dMult;}
   int GetMinCent(int roi){return r[roi].minCent;}
   int GetMaxCent(int roi){return r[roi].maxCent;}
   int GetMinMult(){return minMult;}
@@ -63,10 +65,11 @@ public:
   void SetRuns(int nruns, double * runs); 
   void SaveFrameworkRuns(int roi, TDirectory * dir);
   bool LoadOffsets(string offname);
-
+  double GetXdiff(int roi, int runno);
+  double GetYdiff(int roi, int runno);
   FILE * flist;
 private:
-    TH1D * runbins=NULL;
+  TH1D * runbins=NULL;
   TRandom * ran;
   double vnxEvt[MAXROI];
   double vnyEvt[MAXROI];
@@ -104,8 +107,11 @@ private:
   TH1D * runcnt;
   TH1D * runqx;
   TH1D * runqy;
+  TH1D * qdifx;
+  TH1D * qdify;
   int nruns;
   double runlist[MAXRUNS];
+
   struct range {
     int order;
     int orderIndx;
@@ -141,10 +147,14 @@ private:
     double qnSube[10]={0,0,0,0,0,0,0,0,0,0};
     double wnASub[10]={0,0,0,0,0,0,0,0,0,0};
     TH2D * vn2d;
+    TH1D * vn1d;
+    TH1D * vn1dMult;
     TH1D * mult;
     TH1D * runcnt;
     TH1D * runqx;
     TH1D * runqy;
+    TH1D * qoffx;
+    TH1D * qoffy;
     TH1D * qdifx;
     TH1D * qdify;
   } r[500];
@@ -162,6 +172,17 @@ void Framework::SetRuns(int nr, double * runl){
   nruns = nr;
   for(int i = 0; i<=nr; i++) runlist[i]=runl[i];
 }
+
+  double Framework::GetXdiff(int roi, int runno){
+    if(foff->IsZombie()) return 0;
+    int runbin = runs->GetBin(runno);
+    return r[roi].qdifx->GetBinContent(runbin);
+  }
+  double Framework::GetYdiff(int roi, int runno){
+    if(foff->IsZombie()) return 0;
+    int runbin = runs->GetBin(runno);
+    return r[roi].qdify->GetBinContent(runbin);
+  }
 void Framework::SaveFrameworkRuns(int roi, TDirectory * dir){
   TDirectory * savedir = gDirectory;
   TDirectory * newdir=NULL;
@@ -177,6 +198,8 @@ void Framework::SaveFrameworkRuns(int roi, TDirectory * dir){
   r[roi].runqy->Write(Form("qy_%03.1f_%03.1f",r[roi].minEta,r[roi].maxEta));
   savedir->cd();
 }
+
+
 bool Framework::AddFile(){
   char buf[120];
   if(fgets(buf,120,flist)==NULL) return false;
@@ -276,6 +299,19 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
 			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d->SetOption("colz");
   r[nrange].vn2d->SetDirectory(0);
+  r[nrange].vn2d->SetXTitle(Form("v_{n,x}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
+  r[nrange].vn2d->SetYTitle("v_{n,y}^{obs}");
+  r[nrange].vn1d = new TH1D(Form("vn1d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			    Form("vn1d_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  r[nrange].vn1d->SetDirectory(0);
+  r[nrange].vn1d->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
+  r[nrange].vn1d->SetYTitle("Counts");
+  r[nrange].vn1dMult = new TH1D(Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
+			    Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  r[nrange].vn1dMult->SetDirectory(0);
+  r[nrange].vn1dMult->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
+  r[nrange].vn1dMult->SetYTitle("AvMult");
+
   r[nrange].mult = new TH1D(Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
 			    Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),120,0,120);
   r[nrange].mult->SetDirectory(0);
@@ -294,12 +330,20 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].runqy->Sumw2();
   }
   if(!foff->IsZombie()) {
-    r[nrange].qdifx = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qx_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
-    r[nrange].qdifx->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
+    r[nrange].qoffx = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qx_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
+    r[nrange].qoffx->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
+    r[nrange].qoffx->SetDirectory(0);
+    r[nrange].qoffy = (TH1D *)foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
+    r[nrange].qoffy->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
+    r[nrange].qoffy->SetDirectory(0);
+
+    r[nrange].qdifx = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifx",minCent,maxCent,minPt,maxPt));
+    r[nrange].qdify = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdify",minCent,maxCent,minPt,maxPt));
+    r[nrange].qdifx->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifcnt",minCent,maxCent,minPt,maxPt)));
+    r[nrange].qdify->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdifx->SetDirectory(0);
-    r[nrange].qdify = (TH1D *)foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
-    r[nrange].qdify->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qdify->SetDirectory(0);
+
   }
   ++nrange;
   return nrange-1;
@@ -374,8 +418,8 @@ void Framework::AddEvent(int evt) {
       if(runs!=NULL) {
 	runbin = runs->FindBin(runno_);
 	if(!foff->IsZombie()){
-	  qnxoff = r[i].qdifx->GetBinContent(runbin);
-	  qnyoff = r[i].qdify->GetBinContent(runbin);
+	  qnxoff = r[i].qoffx->GetBinContent(runbin);
+	  qnyoff = r[i].qoffy->GetBinContent(runbin);
 	  vnxEvt[i]-=qnxoff;
 	  vnyEvt[i]-=qnyoff;
 	}
@@ -383,9 +427,9 @@ void Framework::AddEvent(int evt) {
 	r[i].runqx->Fill(runno_,vnxEvt[i]);
 	r[i].runqy->Fill(runno_,vnyEvt[i]);
       }
-      vnxEvt[i] = qnx/qncnt - qnxoff;
-      vnyEvt[i] = qny/qncnt - qnyoff;
       r[i].vn2d->Fill(vnxEvt[i],vnyEvt[i]);
+      r[i].vn1d->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)));
+      r[i].vn1dMult->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)),qncnt);
       r[i].qn+=val;
       r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
       r[i].qnSub[isub]+=val;
