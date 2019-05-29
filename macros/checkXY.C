@@ -32,9 +32,12 @@ static const int Order = 2;
 FILE * flist;
 TH1I * runs;
 TH2D * hDiff[ncentbins][nptbins];
+TH2D * hResp[ncentbins][nptbins];
 TH1D * smear[ncentbins][nptbins];
 TH1D * smearX[ncentbins][nptbins];
 TH1D * smearY[ncentbins][nptbins];
+double lastSmearX[ncentbins][nptbins]={0};
+double lastSmearY[ncentbins][nptbins]={0};
 TH1D * runqdifx[ncentbins][nptbins];
 TH1D * runqdify[ncentbins][nptbins];
 TH1D * runqdifcnt[ncentbins][nptbins];
@@ -98,6 +101,13 @@ void checkXY(string inlist="filelist.dat"){
       hDiff[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
       hDiff[i][j]->SetYTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
 
+      hResp[i][j] = new TH2D(Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,0,1.4,200,0,1.4);
+      hResp[i][j]->SetDirectory(0);
+      hResp[i][j]->SetOption("colz");
+      hResp[i][j]->SetXTitle("vn_{obs}");
+      hResp[i][j]->SetYTitle("vn");
+
       smear[i][j] = new TH1D(Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,0,1.4);
       smear[i][j]->SetDirectory(0);
@@ -154,9 +164,18 @@ void checkXY(string inlist="filelist.dat"){
 	double xdiff = (frame->GetVnxEvt(mapp[k][j])-frame->GetVnxEvt(mapm[k][j]))/2.;
 	double ydiff = (frame->GetVnyEvt(mapp[k][j])-frame->GetVnyEvt(mapm[k][j]))/2.;
  	hDiff[k][j]->Fill(xdiff-xdiffoff ,ydiff-ydiffoff); 
-	smear[k][j]->Fill(sqrt(pow(xdiff-xdiffoff,2)+pow(ydiff-ydiffoff,2)));
+	double hsmear = sqrt(pow(xdiff-xdiffoff,2)+pow(ydiff-ydiffoff,2));
+	smear[k][j]->Fill(hsmear);
 	smearX[k][j]->Fill(xdiff-xdiffoff);
 	smearY[k][j]->Fill(ydiff-ydiffoff);
+	double avvn = (sqrt(pow(frame->GetVnxEvt(mapp[k][j]),2)+pow(frame->GetVnyEvt(mapp[k][j]),2)) +
+		       sqrt(pow(frame->GetVnxEvt(mapm[k][j]),2)+pow(frame->GetVnyEvt(mapm[k][j]),2)))/2.;
+	double obsx = (frame->GetVnxEvt(mapp[k][j])+frame->GetVnxEvt(mapm[k][j]))/2. + lastSmearX[k][j];
+	double obsy = (frame->GetVnyEvt(mapp[k][j])+frame->GetVnyEvt(mapm[k][j]))/2. + lastSmearY[k][j];
+	lastSmearX[k][j] = xdiff-xdiffoff;
+	lastSmearY[k][j] = ydiff-ydiffoff;
+	double vnobs = sqrt(pow(obsx,2)+pow(obsy,2));
+	hResp[k][j]->Fill(vnobs,avvn);
 	runqdifx[k][j]->Fill(runno,xdiff-xdiffoff);
 	runqdify[k][j]->Fill(runno,ydiff-ydiffoff);
 	runqdifcnt[k][j]->Fill(runno);
@@ -199,6 +218,7 @@ void checkXY(string inlist="filelist.dat"){
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
       hDiff[i][j]->Write("diff2d");
+      hResp[i][j]->Write("resp2d");
       smear[i][j]->Write("smearR");
       smearX[i][j]->Write("smearX");
       smearY[i][j]->Write("smearY");
