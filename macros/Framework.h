@@ -52,7 +52,7 @@ public:
   int GetMaxMult(){return maxMult;}
   int GetMinRun(){return minRun;}
   int GetMaxRun(){return maxRun;}
-
+  bool Smear(int roi, double vnx,double vny, double &vnobsx, double &vnobsy, double &vnobs);
   TH1D * GetRuns(){return runs;}
   TH1D * GetMult(int roi){return r[roi].mult;}
   double GetVnxEvt(int roi){return vnxEvt[roi];}
@@ -147,6 +147,7 @@ private:
     double qnSube[10]={0,0,0,0,0,0,0,0,0,0};
     double wnASub[10]={0,0,0,0,0,0,0,0,0,0};
     TH2D * vn2d;
+    TH2D * smear;
     TH1D * vn1d;
     TH1D * vn1dMult;
     TH1D * mult;
@@ -199,6 +200,16 @@ void Framework::SaveFrameworkRuns(int roi, TDirectory * dir){
   savedir->cd();
 }
 
+bool Framework::Smear(int roi, double vnx,double vny, double &vnobsx, double &vnobsy, double &vnobs){
+  if(foff->IsZombie()) return false;
+  double xs;
+  double ys;
+  r[roi].smear->GetRandom2(xs,ys);
+  vnobsx = vnx+xs;
+  vnobsy = vny+ys;
+  vnobs = sqrt(pow(vnobsx,2)+pow(vnobsy,2));
+  return true;
+}
 
 bool Framework::AddFile(){
   char buf[120];
@@ -344,6 +355,7 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].qdifx->SetDirectory(0);
     r[nrange].qdify->SetDirectory(0);
 
+    r[nrange].smear = (TH2D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/diff2d",minCent,maxCent,minPt,maxPt));
   }
   ++nrange;
   return nrange-1;
