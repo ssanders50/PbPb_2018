@@ -17,7 +17,7 @@
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
-static const int maxFiles = 2000;
+static const int maxFiles = 1000;
 static volatile int keepRunning = 1;
 void intHandler(int dummy){
   keepRunning = 0;
@@ -32,12 +32,11 @@ static const int Order = 2;
 FILE * flist;
 TH1I * runs;
 TH2D * hDiff[ncentbins][nptbins];
+TH2D * hDiffRef[ncentbins][nptbins];
 TH2D * hResp[ncentbins][nptbins];
-TH1D * smear[ncentbins][nptbins];
-TH1D * smearX[ncentbins][nptbins];
-TH1D * smearY[ncentbins][nptbins];
-double lastSmearX[ncentbins][nptbins]={0};
-double lastSmearY[ncentbins][nptbins]={0};
+TH1D * hvn[ncentbins][nptbins];
+TH1D * diffX[ncentbins][nptbins];
+TH1D * diffY[ncentbins][nptbins];
 TH1D * runqdifx[ncentbins][nptbins];
 TH1D * runqdify[ncentbins][nptbins];
 TH1D * runqdifcnt[ncentbins][nptbins];
@@ -102,29 +101,34 @@ void checkXY(string inlist="filelist.dat"){
       hDiff[i][j]->SetYTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
 
       hResp[i][j] = new TH2D(Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,0,1.4,200,0,1.4);
+			     Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),280,0,1.4,280,0,1.4);
       hResp[i][j]->SetDirectory(0);
       hResp[i][j]->SetOption("colz");
-      hResp[i][j]->SetXTitle("vn_{obs}");
-      hResp[i][j]->SetYTitle("vn");
+      hResp[i][j]->SetXTitle("v_{2}^{obs}");
+      hResp[i][j]->SetYTitle("v_{2}^{obs}");
 
-      smear[i][j] = new TH1D(Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			      Form("smear_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,0,1.4);
-      smear[i][j]->SetDirectory(0);
-      smear[i][j]->SetXTitle("smear (r)");
-      smear[i][j]->SetYTitle("counts");
+      hvn[i][j] = new TH1D(Form("hvn_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			   Form("hvn_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
+      hvn[i][j]->SetDirectory(0);
+      hvn[i][j]->SetOption("colz");
+      hvn[i][j]->SetXTitle("(v_{2}^{a}+v_{2}^{b})/2");
+      hvn[i][j]->SetYTitle("Counts");
 
-      smearX[i][j] = new TH1D(Form("smearX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			      Form("smearX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,-1.4,1.4);
-      smearX[i][j]->SetDirectory(0);
-      smearX[i][j]->SetXTitle("smear (x)");
-      smearX[i][j]->SetYTitle("counts");
 
-      smearY[i][j] = new TH1D(Form("smearY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			      Form("smearY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),1000,-1.4,1.4);
-      smearY[i][j]->SetDirectory(0);
-      smearY[i][j]->SetXTitle("smear (y)");
-      smearY[i][j]->SetYTitle("counts");
+      diffX[i][j] = new TH1D(Form("diffX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("diffX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),560,-1.4,1.4);
+      diffX[i][j]->SetDirectory(0);
+      diffX[i][j]->SetOption("colz");
+      diffX[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
+      diffX[i][j]->SetYTitle("Counts");
+
+      diffY[i][j] = new TH1D(Form("diffY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("diffY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),560,-1.4,1.4);
+      diffY[i][j]->SetDirectory(0);
+      diffY[i][j]->SetOption("colz");
+      diffY[i][j]->SetXTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
+      diffY[i][j]->SetYTitle("Counts");
+
 
       runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 				Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
@@ -139,8 +143,6 @@ void checkXY(string inlist="filelist.dat"){
       runqdifcnt[i][j]->SetDirectory(0);
       runqdifcnt[i][j]->Sumw2();
       
-
-
     }
   }
   frame->ShowAllROIRanges();
@@ -161,23 +163,36 @@ void checkXY(string inlist="filelist.dat"){
 	if(frame->GetVnyEvt(mapm[k][j])<-1) continue;
 	double xdiffoff = frame->GetXdiff(mapp[k][j],runno);
 	double ydiffoff = frame->GetYdiff(mapp[k][j],runno);
-	double xdiff = (frame->GetVnxEvt(mapp[k][j])-frame->GetVnxEvt(mapm[k][j]))/2.;
-	double ydiff = (frame->GetVnyEvt(mapp[k][j])-frame->GetVnyEvt(mapm[k][j]))/2.;
- 	hDiff[k][j]->Fill(xdiff-xdiffoff ,ydiff-ydiffoff); 
-	double hsmear = sqrt(pow(xdiff-xdiffoff,2)+pow(ydiff-ydiffoff,2));
-	smear[k][j]->Fill(hsmear);
-	smearX[k][j]->Fill(xdiff-xdiffoff);
-	smearY[k][j]->Fill(ydiff-ydiffoff);
-	double avvn = (sqrt(pow(frame->GetVnxEvt(mapp[k][j]),2)+pow(frame->GetVnyEvt(mapp[k][j]),2)) +
-		       sqrt(pow(frame->GetVnxEvt(mapm[k][j]),2)+pow(frame->GetVnyEvt(mapm[k][j]),2)))/2.;
-	double obsx = (frame->GetVnxEvt(mapp[k][j])+frame->GetVnxEvt(mapm[k][j]))/2. + lastSmearX[k][j];
-	double obsy = (frame->GetVnyEvt(mapp[k][j])+frame->GetVnyEvt(mapm[k][j]))/2. + lastSmearY[k][j];
-	lastSmearX[k][j] = xdiff-xdiffoff;
-	lastSmearY[k][j] = ydiff-ydiffoff;
-	double vnobs = sqrt(pow(obsx,2)+pow(obsy,2));
-	hResp[k][j]->Fill(vnobs,avvn);
-	runqdifx[k][j]->Fill(runno,xdiff-xdiffoff);
-	runqdify[k][j]->Fill(runno,ydiff-ydiffoff);
+
+	double vnxp = frame->GetVnxEvt(mapp[k][j]);
+	double vnxm = frame->GetVnxEvt(mapm[k][j]);
+	double vnx = (vnxp+vnxm)/2.;
+
+	double vnyp = frame->GetVnyEvt(mapp[k][j]);
+	double vnym = frame->GetVnyEvt(mapm[k][j]);
+	double vny = (vnyp+vnym)/2.;
+
+	double vnp = sqrt(pow(vnxp,2)+pow(vnyp,2));
+	double vnm = sqrt(pow(vnxm,2)+pow(vnym,2));
+	double vn = sqrt(pow(vnx,2)+pow(vny,2));
+	hvn[k][j]->Fill(vn);
+
+	double xdiff = (vnxp-vnxm)/2. - xdiffoff;
+	double ydiff = (vnyp-vnym)/2. - ydiffoff;
+ 	hDiff[k][j]->Fill(xdiff,ydiff); 
+
+	double vnobsx = 0;
+	double vnobsy = 0;
+	double vnobs = 0;
+	frame->Smear(mapp[k][j],vnx,vny,vnobsx,vnobsy,vnobs);
+	
+
+	diffX[k][j]->Fill(xdiff,vnobs);
+	diffY[k][j]->Fill(ydiff,vnobs);
+
+	hResp[k][j]->Fill(vnobs,vn);
+	runqdifx[k][j]->Fill(runno,xdiff);
+	runqdify[k][j]->Fill(runno,ydiff);
 	runqdifcnt[k][j]->Fill(runno);
       }
     }
@@ -217,11 +232,11 @@ void checkXY(string inlist="filelist.dat"){
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
+      hvn[i][j]->Write("vn");
       hDiff[i][j]->Write("diff2d");
       hResp[i][j]->Write("resp2d");
-      smear[i][j]->Write("smearR");
-      smearX[i][j]->Write("smearX");
-      smearY[i][j]->Write("smearY");
+      diffX[i][j]->Write("diffX");
+      diffY[i][j]->Write("diffY");
       runqdifx[i][j]->Write("qdifx");
       runqdify[i][j]->Write("qdify");
       runqdifcnt[i][j]->Write("qdifcnt");
