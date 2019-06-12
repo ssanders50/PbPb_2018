@@ -27,7 +27,7 @@ static const int MAXROI = 500;
 static const int MAXRUNS = 500; 
 class Framework{
 public:
-  Framework(string filelist="filelist.dat");
+  Framework(string filelist="filelist.dat", bool EffCorrect = true);
   bool AddFile();
   int GetN(){return maxevents;}
   void GetEntry(int i){tr->GetEntry(i);}
@@ -39,10 +39,11 @@ public:
   double GetAvPt(int roi){return r[roi].pt/r[roi].wn;}
   double GetqnA(int roi){return r[roi].qn/r[roi].wnA;}
   double GetVn(int roi) {return GetqnA(roi)/GetqABC(roi);}
+  double GetAng(int roi) {return r[roi].ang;}
   double GetVnErrSubEvt(int roi);
   double GetVnErr(int roi) {return GetqnAError(roi)/GetqABC(roi);}
   double GetqABC(int roi);
-  TH1D * GetSpectra(int roi, bool effCorrect = true);
+  TH1D * GetSpectra(int roi);
   TH2D * Get2d(int roi){return r[roi].vn2d;}
   TH1D * Get1d(int roi){return r[roi].vn1d;}
   TH1D * Get1dMult(int roi){return r[roi].vn1dMult;}
@@ -78,6 +79,8 @@ private:
   int maxevents;
   TFile * tf;
   TFile *foff;
+  bool effCorrect = false;
+  TFile * feff = NULL;
   TTree * tr;
   double centval;
   int ntrkval;
@@ -158,6 +161,7 @@ private:
     TH1D * qoffy;
     TH1D * qdifx;
     TH1D * qdify;
+    double ang;
   } r[500];
   int nrange = 0;
 };
@@ -174,16 +178,16 @@ void Framework::SetRuns(int nr, double * runl){
   for(int i = 0; i<=nr; i++) runlist[i]=runl[i];
 }
 
-  double Framework::GetXdiff(int roi, int runno){
-    if(foff->IsZombie()) return 0;
-    int runbin = runs->GetBin(runno);
-    return r[roi].qdifx->GetBinContent(runbin);
-  }
-  double Framework::GetYdiff(int roi, int runno){
-    if(foff->IsZombie()) return 0;
-    int runbin = runs->GetBin(runno);
-    return r[roi].qdify->GetBinContent(runbin);
-  }
+double Framework::GetXdiff(int roi, int runno){
+  if(foff->IsZombie()) return 0;
+  int runbin = runs->GetBin(runno);
+  return r[roi].qdifx->GetBinContent(runbin);
+}
+double Framework::GetYdiff(int roi, int runno){
+  if(foff->IsZombie()) return 0;
+  int runbin = runs->GetBin(runno);
+  return r[roi].qdify->GetBinContent(runbin);
+}
 void Framework::SaveFrameworkRuns(int roi, TDirectory * dir){
   TDirectory * savedir = gDirectory;
   TDirectory * newdir=NULL;
@@ -245,7 +249,7 @@ bool Framework::AddFile(){
   tr->SetBranchAddress("avpt",    &avpt);
   return true;
 }
-Framework::Framework(string filelist){
+Framework::Framework(string filelist, bool EffCorrect){
   ran = new TRandom();
   cout<<"open: "<<filelist<<endl;
   //system("cat filelist.dat");
@@ -282,6 +286,13 @@ Framework::Framework(string filelist){
   tr->SetBranchAddress("avpt",    &avpt);
   runs = new TH1D("runs","runs",maxRunRange-minRunRange+1,minRunRange,maxRunRange);
   runs->SetDirectory(0);
+  effCorrect = EffCorrect;
+  if(effCorrect){
+    feff = new TFile(efffile.data());
+    cout<<"Efficiency File: "<<efffile<<endl;
+  } else {
+    cout<<"Efficienty correction is not being applied."<<endl;
+  }
 }
 int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, double maxEta, double minPt, double maxPt) {
   if(maxevents==0) return -1;
@@ -318,11 +329,11 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].vn1d->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1d->SetYTitle("Counts");
   r[nrange].vn1dMult = new TH1D(Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-			    Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+				Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
   r[nrange].vn1dMult->SetDirectory(0);
   r[nrange].vn1dMult->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1dMult->SetYTitle("AvMult");
-
+  
   r[nrange].mult = new TH1D(Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
 			    Form("mult_%d_%d_%d_%03.1f_%03.1f_%03.1f_%03.1f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),120,0,120);
   r[nrange].mult->SetDirectory(0);
@@ -347,16 +358,17 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].qoffy = (TH1D *)foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
     r[nrange].qoffy->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qoffy->SetDirectory(0);
-
+    
     r[nrange].qdifx = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifx",minCent,maxCent,minPt,maxPt));
     r[nrange].qdify = (TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdify",minCent,maxCent,minPt,maxPt));
     r[nrange].qdifx->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdify->Divide((TH1D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdifx->SetDirectory(0);
     r[nrange].qdify->SetDirectory(0);
-
+    
     r[nrange].smear = (TH2D *) foff->Get(Form("%d_%d/%3.1f_%3.1f/diff2d",minCent,maxCent,minPt,maxPt));
   }
+  
   ++nrange;
   return nrange-1;
 } 
@@ -400,19 +412,41 @@ void Framework::AddEvent(int evt) {
     double qncnt = 0;
     double qncnte = 0;
     double pt = 0;
+    TH2D * heff = 0;
+    if(effCorrect) {
+      if(centval<5) {
+	heff = (TH2D *) feff->Get("Eff_0_5")->Clone("Eff_clone");
+      } else if (centval<10) {
+	heff = (TH2D *) feff->Get("Eff_5_10")->Clone("Eff_clone");
+      } else if (centval<30) {
+	heff = (TH2D *) feff->Get("Eff_10_30")->Clone("Eff_clone");
+      } else if (centval<50) {
+	heff = (TH2D *) feff->Get("Eff_30_50")->Clone("Eff_clone");
+      } else if (centval<100) {
+	heff = (TH2D *) feff->Get("Eff_50_100")->Clone("Eff_clone");
+      }
+      heff->SetDirectory(0);
+    }
     for(int j = r[i].minEtaBin; j<= r[i].maxEtaBin; j++) {
       for(int k = r[i].minPtBin; k<=r[i].maxPtBin; k++) {
-	qnx+=qxtrk[r[i].orderIndx]->GetBinContent(k,j);
-	qny+=qytrk[r[i].orderIndx]->GetBinContent(k,j);
-	qncnt+=qcnt->GetBinContent(k,j);
-	if(qcnt->GetBinContent(k,j)>0) {
-	  qnxe+=pow(qxtrk[r[i].orderIndx]->GetBinError(k,j),2);
-	  qnye+=pow(qytrk[r[i].orderIndx]->GetBinError(k,j),2);
-	  qncnte+=pow(qcnt->GetBinError(k,j),2);
+	double binpt = qxtrk[r[i].orderIndx]->GetXaxis()->GetBinCenter(k);
+	double bineta = qxtrk[r[i].orderIndx]->GetYaxis()->GetBinCenter(j);
+	double eff = 1;
+	if(effCorrect) {
+	  eff = heff->GetBinContent(heff->GetXaxis()->FindBin(bineta),heff->GetYaxis()->FindBin(binpt));
 	}
-	pt+=avpt->GetBinContent(k,j);
+	qnx+=qxtrk[r[i].orderIndx]->GetBinContent(k,j)/eff;
+	qny+=qytrk[r[i].orderIndx]->GetBinContent(k,j)/eff;
+	qncnt+=qcnt->GetBinContent(k,j)/eff;
+	if(qcnt->GetBinContent(k,j)>0) {
+	  qnxe+=pow(qxtrk[r[i].orderIndx]->GetBinError(k,j)/eff,2);
+	  qnye+=pow(qytrk[r[i].orderIndx]->GetBinError(k,j)/eff,2);
+	  qncnte+=pow(qcnt->GetBinError(k,j)/eff,2);
+	}
+	pt+=avpt->GetBinContent(k,j)/eff;
       }
     }
+    heff->Delete();
     pt/=qncnt;
     r[i].mult->Fill(qncnt);
     vnxEvt[i] = -2;
@@ -421,54 +455,55 @@ void Framework::AddEvent(int evt) {
     if(maxMult>0 && qncnt>maxMult) continue;
     int isub = ran->Uniform(0,9.9999);
     double val = qAx*qnx+qAy*qny;
-    if(qncnt>0) {
-      double qnxoff = 0;
-      double qnyoff = 0;
-      int runbin = 0;
-      vnxEvt[i] = qnx/qncnt;
-      vnyEvt[i] = qny/qncnt ;
-      if(runs!=NULL) {
-	runbin = runs->FindBin(runno_);
-	if(!foff->IsZombie()){
-	  qnxoff = r[i].qoffx->GetBinContent(runbin);
-	  qnyoff = r[i].qoffy->GetBinContent(runbin);
-	  vnxEvt[i]-=qnxoff;
-	  vnyEvt[i]-=qnyoff;
-	}
-	r[i].runcnt->Fill(runno_);
-	r[i].runqx->Fill(runno_,vnxEvt[i]);
-	r[i].runqy->Fill(runno_,vnyEvt[i]);
+    
+    double qnxoff = 0;
+    double qnyoff = 0;
+    int runbin = 0;
+    vnxEvt[i] = qnx/qncnt;
+    vnyEvt[i] = qny/qncnt ;
+    if(runs!=NULL) {
+      runbin = runs->FindBin(runno_);
+      if(!foff->IsZombie()){
+	qnxoff = r[i].qoffx->GetBinContent(runbin);
+	qnyoff = r[i].qoffy->GetBinContent(runbin);
+	vnxEvt[i]-=qnxoff;
+	vnyEvt[i]-=qnyoff;
       }
-      r[i].vn2d->Fill(vnxEvt[i],vnyEvt[i]);
-      r[i].vn1d->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)));
-      r[i].vn1dMult->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)),qncnt);
-      r[i].qn+=val;
-      r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
-      r[i].qnSub[isub]+=val;
-      r[i].qnSube[isub]+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
-      r[i].wn+=qncnt;
-      r[i].wne+=qncnte;
-      r[i].pt+=pt;
-      double Ax = qx[r[i].A];
-      double Bx = qx[r[i].B];
-      double Cx = qx[r[i].C];
-      double Ay = qy[r[i].A];
-      double By = qy[r[i].B];
-      double Cy = qy[r[i].C];
-      double wA = sumw[r[i].A];
-      double wB = sumw[r[i].B];
-      double wC = sumw[r[i].C];
-      r[i].qAB += Ax*Bx+Ay*By;
-      r[i].qAC += Ax*Cx+Ay*Cy;
-      r[i].qBC += Bx*Cx+By*Cy;
-      r[i].wAB += wA*wB;
-      r[i].wAC += wA*wC;
-      r[i].wBC += wB*wC;
-      r[i].wnA+=qncnt*wA;
-      r[i].wnASub[isub]+=qncnt*wA;
+      r[i].runcnt->Fill(runno_);
+      r[i].runqx->Fill(runno_,vnxEvt[i]);
+      r[i].runqy->Fill(runno_,vnyEvt[i]);
     }
+    r[i].ang = atan2(vnyEvt[i],vnxEvt[i])/r[i].order;
+    r[i].vn2d->Fill(vnxEvt[i],vnyEvt[i]);
+    r[i].vn1d->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)));
+    r[i].vn1dMult->Fill(sqrt(pow(vnxEvt[i],2)+pow(vnyEvt[i],2)),qncnt);
+    r[i].qn+=val;
+    r[i].qne+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
+    r[i].qnSub[isub]+=val;
+    r[i].qnSube[isub]+=pow(qAx,2)*qnxe/fabs(qnx) + pow(qAy,2)*qnye/fabs(qny);
+    r[i].wn+=qncnt;
+    r[i].wne+=qncnte;
+    r[i].pt+=pt;
+    double Ax = qx[r[i].A];
+    double Bx = qx[r[i].B];
+    double Cx = qx[r[i].C];
+    double Ay = qy[r[i].A];
+    double By = qy[r[i].B];
+    double Cy = qy[r[i].C];
+    double wA = sumw[r[i].A];
+    double wB = sumw[r[i].B];
+    double wC = sumw[r[i].C];
+    r[i].qAB += Ax*Bx+Ay*By;
+    r[i].qAC += Ax*Cx+Ay*Cy;
+    r[i].qBC += Bx*Cx+By*Cy;
+    r[i].wAB += wA*wB;
+    r[i].wAC += wA*wC;
+    r[i].wBC += wB*wC;
+    r[i].wnA+=qncnt*wA;
+    r[i].wnASub[isub]+=qncnt*wA;
   }
 }
+
 double Framework::GetqABC(int roi) {
   double AB = r[roi].qAB/r[roi].wAB;
   double AC = r[roi].qAC/r[roi].wAC;
@@ -476,7 +511,7 @@ double Framework::GetqABC(int roi) {
   return sqrt(AB*AC/BC);
 }
 
-TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
+TH1D * Framework::GetSpectra(int roi) {
   debug = false;
   TDirectory * dirsave = gDirectory;
   TH2D * spec;
@@ -494,7 +529,6 @@ TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
   int ietamax = spec->GetYaxis()->FindBin(etamax-0.01);
   TH1D * spec1draw = (TH1D *) spec->ProjectionX(Form("spec1draw_%d_%d_%03.1f_%03.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
   if(effCorrect){
-    TFile * feff = new TFile(efffile.data());
     double avcent = (minCent+maxCent)/2.;
     if(avcent<5) {
       heff = (TH2D *) feff->Get("Eff_0_5")->Clone("Eff_clone");
@@ -516,8 +550,7 @@ TH1D * Framework::GetSpectra(int roi, bool effCorrect) {
 	if(eff == 0 && debug) cout<<i<<"\t"<<j<<"\t"<<eff<<"\t"<<binpt<<"\t"<<bineta<<endl;
 	if(eff>0) spec->SetBinContent(i,j,spec->GetBinContent(i,j)/eff);
       }
-    }
-    feff->Close(); 
+    } 
   }
   TH1D * spec1d = (TH1D *) spec->ProjectionX(Form("spec1d_%d_%d_%03.1f_%03.1f",minCent,maxCent,etamin,etamax),ietamin,ietamax);
   spec1d->SetDirectory(0);
