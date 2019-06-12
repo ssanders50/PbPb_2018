@@ -23,9 +23,9 @@ void intHandler(int dummy){
   keepRunning = 0;
 }
 TFile * tf=NULL;
-static const int nptbins = 14;
-static const float ptbinsMin[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0, 2.5,  3.0,  3.5, 0.3, 1.0};
-static const float ptbinsMax[]={0.4, 0.5, 0.6,  0.8,  1.0, 1.25,  1.50,   2.0,  2.5, 3.0,  3.5,  4.0, 3.0, 3.0};
+static const int nptbins = 15;
+static const float ptbinsMin[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0, 2.5,  3.0,  3.5, 0.3, 0.6, 1.0};
+static const float ptbinsMax[]={0.4, 0.5, 0.6,  0.8,  1.0, 1.25,  1.50,   2.0,  2.5, 3.0,  3.5,  4.0, 3.0, 3.0, 3.0};
 static const int ncentbins = 13;
 static const int centbins[]={0,5,10,15,20,25,30,35,40,50,60,70,80,100};
 static const int Order = 2;
@@ -34,6 +34,8 @@ TH1I * runs;
 TH2D * hDiff[ncentbins][nptbins];
 TH2D * hDiffRef[ncentbins][nptbins];
 TH2D * hResp[ncentbins][nptbins];
+TH2D * hvncorr[ncentbins][nptbins];
+TH2D * hangcorr[ncentbins][nptbins];
 TH1D * hvn[ncentbins][nptbins];
 TH1D * diffX[ncentbins][nptbins];
 TH1D * diffY[ncentbins][nptbins];
@@ -83,12 +85,12 @@ void checkXY(string inlist="filelist.dat"){
   int iloc = 0;
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
-      ROIp[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],0.4, 0.8, ptbinsMin[j], ptbinsMax[j]);
+      ROIp[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],0.0, 1.2, ptbinsMin[j], ptbinsMax[j]);
       frame->SetROIEP(ROIp[i][j],HFm2,HFp2,trackmid2);
       mapp[i][j]=iloc;
       ptloc[iloc] = j;
       centloc[iloc++]=i;
-      ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-0.8, -0.4, ptbinsMin[j], ptbinsMax[j]);
+      ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-1.2, 0.0, ptbinsMin[j], ptbinsMax[j]);
       frame->SetROIEP(ROIm[i][j],HFp2,HFm2,trackmid2);
       mapm[i][j]=iloc;
       ptloc[iloc] = j;
@@ -113,6 +115,21 @@ void checkXY(string inlist="filelist.dat"){
       hvn[i][j]->SetOption("colz");
       hvn[i][j]->SetXTitle("(v_{2}^{a}+v_{2}^{b})/2");
       hvn[i][j]->SetYTitle("Counts");
+
+      hvncorr[i][j] = new TH2D(Form("hvncorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hvncorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
+      hvncorr[i][j]->SetDirectory(0);
+      hvncorr[i][j]->SetOption("colz");
+      hvncorr[i][j]->SetXTitle("v_{2}^{a +}");
+      hvncorr[i][j]->SetYTitle("v_{2}^{b -}");
+
+      hangcorr[i][j] = new TH2D(Form("hangcorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hangcorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				100,-4,4,100,-4,4);
+      hangcorr[i][j]->SetDirectory(0);
+      hangcorr[i][j]->SetOption("colz");
+      hangcorr[i][j]->SetXTitle("#Psi^{a +}");
+      hangcorr[i][j]->SetYTitle("#Psi^{b -}");
 
 
       diffX[i][j] = new TH1D(Form("diffX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
@@ -176,7 +193,8 @@ void checkXY(string inlist="filelist.dat"){
 	double vnm = sqrt(pow(vnxm,2)+pow(vnym,2));
 	double vn = sqrt(pow(vnx,2)+pow(vny,2));
 	hvn[k][j]->Fill(vn);
-
+	hvncorr[k][j]->Fill(vnm,vnp);
+	hangcorr[k][j]->Fill(frame->GetAng(mapm[k][j]),frame->GetAng(mapp[k][j]));
 	double xdiff = (vnxp-vnxm)/2. - xdiffoff;
 	double ydiff = (vnyp-vnym)/2. - ydiffoff;
  	hDiff[k][j]->Fill(xdiff,ydiff); 
@@ -233,6 +251,8 @@ void checkXY(string inlist="filelist.dat"){
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
       hvn[i][j]->Write("vn");
+      hvncorr[i][j]->Write("vncorr");
+      hangcorr[i][j]->Write("angcorr");
       hDiff[i][j]->Write("diff2d");
       hResp[i][j]->Write("resp2d");
       diffX[i][j]->Write("diffX");
