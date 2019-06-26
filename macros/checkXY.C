@@ -17,7 +17,7 @@
 #include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
-static const int maxFiles = 1000;
+static const int maxFiles = 5;
 static volatile int keepRunning = 1;
 void intHandler(int dummy){
   keepRunning = 0;
@@ -36,6 +36,8 @@ TH2D * hDiffRef[ncentbins][nptbins];
 TH2D * hResp[ncentbins][nptbins];
 TH2D * hvncorr[ncentbins][nptbins];
 TH2D * hangcorr[ncentbins][nptbins];
+TH2D * hangcorrHFpA[ncentbins][nptbins];
+TH2D * hangcorrHFpB[ncentbins][nptbins];
 TH1D * hvn[ncentbins][nptbins];
 TH1D * diffX[ncentbins][nptbins];
 TH1D * diffY[ncentbins][nptbins];
@@ -95,68 +97,85 @@ void checkXY(string inlist="filelist.dat"){
       mapm[i][j]=iloc;
       ptloc[iloc] = j;
       centloc[iloc++]=i;
-      hDiff[i][j] = new TH2D(Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("diff_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
+      hDiff[i][j] = new TH2D(Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
       hDiff[i][j]->SetDirectory(0);
       hDiff[i][j]->SetOption("colz");
       hDiff[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
       hDiff[i][j]->SetYTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
 
-      hResp[i][j] = new TH2D(Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("resp_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),280,0,1.4,280,0,1.4);
+      hResp[i][j] = new TH2D(Form("resp_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("resp_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1.0,100,0,1.0);
       hResp[i][j]->SetDirectory(0);
       hResp[i][j]->SetOption("colz");
       hResp[i][j]->SetXTitle("v_{2}^{obs}");
       hResp[i][j]->SetYTitle("v_{2}^{obs}");
 
-      hvn[i][j] = new TH1D(Form("hvn_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			   Form("hvn_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
+      hvn[i][j] = new TH1D(Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			   Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
       hvn[i][j]->SetDirectory(0);
       hvn[i][j]->SetOption("colz");
       hvn[i][j]->SetXTitle("(v_{2}^{a}+v_{2}^{b})/2");
       hvn[i][j]->SetYTitle("Counts");
 
-      hvncorr[i][j] = new TH2D(Form("hvncorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			       Form("hvncorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
+      hvncorr[i][j] = new TH2D(Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
       hvncorr[i][j]->SetDirectory(0);
       hvncorr[i][j]->SetOption("colz");
       hvncorr[i][j]->SetXTitle("v_{2}^{a +}");
       hvncorr[i][j]->SetYTitle("v_{2}^{b -}");
 
-      hangcorr[i][j] = new TH2D(Form("hangcorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			       Form("hangcorr_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-4,4,100,-4,4);
+      hangcorr[i][j] = new TH2D(Form("hangcorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hangcorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				100,-2,2,100,-2,2);
       hangcorr[i][j]->SetDirectory(0);
       hangcorr[i][j]->SetOption("colz");
-      hangcorr[i][j]->SetXTitle("#Psi^{a +}");
-      hangcorr[i][j]->SetYTitle("#Psi^{b -}");
+      hangcorr[i][j]->SetXTitle("#Psi^{b -}");
+      hangcorr[i][j]->SetYTitle("#Psi^{a +}");
 
 
-      diffX[i][j] = new TH1D(Form("diffX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			      Form("diffX_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),560,-1.4,1.4);
+      hangcorrHFpA[i][j] = new TH2D(Form("hangcorrHFpA_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hangcorrHFpA_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				100,-2,2,100,-2,2);
+      hangcorrHFpA[i][j]->SetDirectory(0);
+      hangcorrHFpA[i][j]->SetOption("colz");
+      hangcorrHFpA[i][j]->SetXTitle("#Psi^{HF+}");
+      hangcorrHFpA[i][j]->SetYTitle("#Psi^{a +}");
+
+      hangcorrHFpB[i][j] = new TH2D(Form("hangcorrHFpB_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			       Form("hangcorrHFpB_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				100,-2,2,100,-2,2);
+      hangcorrHFpB[i][j]->SetDirectory(0);
+      hangcorrHFpB[i][j]->SetOption("colz");
+      hangcorrHFpB[i][j]->SetXTitle("#Psi^{HF+}");
+      hangcorrHFpB[i][j]->SetYTitle("#Psi^{b -}");
+
+
+      diffX[i][j] = new TH1D(Form("diffX_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("diffX_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffX[i][j]->SetDirectory(0);
       diffX[i][j]->SetOption("colz");
       diffX[i][j]->SetXTitle("(v_{2,x}^{obs,a}-v_{2,x}^{obs,b})/2");
       diffX[i][j]->SetYTitle("Counts");
 
-      diffY[i][j] = new TH1D(Form("diffY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			      Form("diffY_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),560,-1.4,1.4);
+      diffY[i][j] = new TH1D(Form("diffY_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			      Form("diffY_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffY[i][j]->SetDirectory(0);
       diffY[i][j]->SetOption("colz");
       diffY[i][j]->SetXTitle("(v_{2,y}^{obs,a}-v_{2,y}^{obs,b})/2");
       diffY[i][j]->SetYTitle("Counts");
 
 
-      runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				Form("runqdifx_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
+      runqdifx[i][j] = new TH1D(Form("runqdifx_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdifx_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdifx[i][j]->SetDirectory(0);
       runqdifx[i][j]->Sumw2();
-      runqdify[i][j] = new TH1D(Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				Form("runqdify_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
+      runqdify[i][j] = new TH1D(Form("runqdify_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdify_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdify[i][j]->SetDirectory(0);
       runqdify[i][j]->Sumw2();
-      runqdifcnt[i][j] = new TH1D(Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				Form("runqdifcnt_%d_%d_%03.1f_%03.1f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
+      runqdifcnt[i][j] = new TH1D(Form("runqdifcnt_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+				Form("runqdifcnt_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nruns,runlist);
       runqdifcnt[i][j]->SetDirectory(0);
       runqdifcnt[i][j]->Sumw2();
       
@@ -195,6 +214,8 @@ void checkXY(string inlist="filelist.dat"){
 	hvn[k][j]->Fill(vn);
 	hvncorr[k][j]->Fill(vnm,vnp);
 	hangcorr[k][j]->Fill(frame->GetAng(mapm[k][j]),frame->GetAng(mapp[k][j]));
+	hangcorrHFpA[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapp[k][j]));
+	hangcorrHFpB[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapm[k][j]));
 	double xdiff = (vnxp-vnxm)/2. - xdiffoff;
 	double ydiff = (vnyp-vnym)/2. - ydiffoff;
  	hDiff[k][j]->Fill(xdiff,ydiff); 
@@ -232,7 +253,7 @@ void checkXY(string inlist="filelist.dat"){
     TH1D * sp = frame->GetSpectra(ROIp[0][i]);
     sp->Write();
     for(int j = 0; j<nptbins; j++) {
-      subsubdirs[i][j] = subdirs[i]->mkdir(Form("%03.1f_%03.1f",ptbinsMin[j],ptbinsMax[j]));
+      subsubdirs[i][j] = subdirs[i]->mkdir(Form("%04.2f_%04.2f",ptbinsMin[j],ptbinsMax[j]));
     }
   }
    for(int i = 0; i<frame->GetNrange(); i++) {
@@ -253,6 +274,8 @@ void checkXY(string inlist="filelist.dat"){
       hvn[i][j]->Write("vn");
       hvncorr[i][j]->Write("vncorr");
       hangcorr[i][j]->Write("angcorr");
+      hangcorrHFpA[i][j]->Write("angcorr_HFpA");
+      hangcorrHFpB[i][j]->Write("angcorr_HFpB");
       hDiff[i][j]->Write("diff2d");
       hResp[i][j]->Write("resp2d");
       diffX[i][j]->Write("diffX");
