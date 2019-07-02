@@ -224,32 +224,33 @@ bool
 TrackQuality::TrackQuality_generalAndHiPixelTracks(const reco::TrackCollection::const_iterator& itTrack, const reco::VertexCollection& recoVertices, double centrality)
 {
   if ( itTrack->charge() == 0 ) return false;
-  int primaryvtx = 0;
-  math::XYZPoint v1( recoVertices[primaryvtx].position().x(), recoVertices[primaryvtx].position().y(), recoVertices[primaryvtx].position().z() );
-  double vxError = recoVertices[primaryvtx].xError();
-  double vyError = recoVertices[primaryvtx].yError();
-  double vzError = recoVertices[primaryvtx].zError();
-  double d0 = -1.* itTrack->dxy(v1);
-  double dz=itTrack->dz(v1);
-  double dzerror=sqrt(itTrack->dzError()*itTrack->dzError()+vzError*vzError);
-  double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError);
+  //These cuts are now all applied in the track merge producer.
+  /* int primaryvtx = 0; */
+  /* math::XYZPoint v1( recoVertices[primaryvtx].position().x(), recoVertices[primaryvtx].position().y(), recoVertices[primaryvtx].position().z() ); */
+  /* double vxError = recoVertices[primaryvtx].xError(); */
+  /* double vyError = recoVertices[primaryvtx].yError(); */
+  /* double vzError = recoVertices[primaryvtx].zError(); */
+  /* double d0 = -1.* itTrack->dxy(v1); */
+  /* double dz=itTrack->dz(v1); */
+  /* double dzerror=sqrt(itTrack->dzError()*itTrack->dzError()+vzError*vzError); */
+  /* double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError); */
   
-  if( (itTrack->pt() < 1.0 && centrality < 10) ||( itTrack->pt() < 0.6 && centrality >= 10)) {
-    //pixel tracks
-    if ( fabs( dz/dzerror ) > dzdzerror_pix_ ) return false;
-    double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError);
-    if ( fabs( d0/derror ) > d0d0error_pix_ ) return false;
+  /* if( (itTrack->pt() < 1.0 && centrality < 10) ||( itTrack->pt() < 0.6 && centrality >= 10)) { */
+  /*   //pixel tracks */
+  /*   if ( fabs( dz/dzerror ) > dzdzerror_pix_ ) return false; */
+  /*   double derror=sqrt(itTrack->dxyError()*itTrack->dxyError()+vxError*vyError); */
+  /*   if ( fabs( d0/derror ) > d0d0error_pix_ ) return false; */
     
-  } else {
-    //general tracks
-    if ( !itTrack->quality(reco::TrackBase::highPurity) ) return false;
-    int nHits = itTrack->numberOfValidHits();
-    if ( nHits < 11 ) return false;
-    if ( itTrack->ptError()/itTrack->pt() > pterror_ ) return false;
-    if ( fabs( dz/dzerror ) > dzdzerror_ ) return false;
-    if ( fabs( d0/derror ) > d0d0error_ ) return false;
-    if ( itTrack->normalizedChi2() / itTrack->hitPattern().trackerLayersWithMeasurement() > chi2_ ) return false;
-  }
+  /* } else { */
+  /*   //general tracks */
+  /*   if ( !itTrack->quality(reco::TrackBase::highPurity) ) return false; */
+  /*   int nHits = itTrack->numberOfValidHits(); */
+  /*   if ( nHits < 11 ) return false; */
+  /*   if ( itTrack->ptError()/itTrack->pt() > pterror_ ) return false; */
+  /*   if ( fabs( dz/dzerror ) > dzdzerror_ ) return false; */
+  /*   if ( fabs( d0/derror ) > d0d0error_ ) return false; */
+  /*   if ( itTrack->normalizedChi2() / itTrack->hitPattern().trackerLayersWithMeasurement() > chi2_ ) return false; */
+  /* } */
   return true;
 }
 ///

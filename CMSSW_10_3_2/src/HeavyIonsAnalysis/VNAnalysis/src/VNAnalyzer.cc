@@ -64,8 +64,8 @@ using namespace hi;
 using namespace edm;
 
 
-static const int ntrkbins = 15;
-static const  float trkBins[]={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 100};
+static const int ntrkbins = 13;
+static const  float trkBins[]={0, 5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100};
 
 static const int netabinsDefault = 12;
 static const float etabinsDefault[]={-2.4, -2.0, -1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4};
@@ -73,9 +73,9 @@ static const float etabinsDefault[]={-2.4, -2.0, -1.6, -1.2, -0.8, -0.4, 0, 0.4,
 static const int ncentbins = 13;
 static const  float centbins[]={0, 5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100};
 
-static const int nptbins = 28;
+static const int nptbins = 19;
 static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0,
-			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10., 12.0, 14.0, 16.0,  20.0, 26.0, 35.0, 45.0, 60.0, 80.0, 100., 200.};
+			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10., 12.0, 14.0};
 
 //
 // class declaration
@@ -219,10 +219,16 @@ private:
   bool genMC_;
   int Noffmin_;
   int Noffmax_;
-  TH2F * qxtrk[7];
-  TH2F * qytrk[7];
-  TH2F * qcnt;
-  TH2F * avpt;
+  static const int nqxorder = 1;
+  int qxorders[nqxorder]={2};
+  TH2F * qxtrk_p[nqxorder];
+  TH2F * qytrk_p[nqxorder];
+  TH2F * qcnt_p;
+  TH2F * avpt_p;
+  TH2F * qxtrk_m[nqxorder];
+  TH2F * qytrk_m[nqxorder];
+  TH2F * qcnt_m;
+  TH2F * avpt_m;
   TH2D * res[7][ntrkbins];
   TH2D * resw[7][ntrkbins];
   TH2D * resep[7][ntrkbins];
@@ -247,7 +253,7 @@ private:
   } offsets[12];
   int nCentBins_ = 1;
   int ntrack;
-
+  TH2D * hphipt[6];
 
   TH2D * hTemplate;
   //===================================
@@ -305,12 +311,16 @@ private:
     int Ntrk = 0;
     using namespace edm;
     using namespace reco;
-    for(int i = 0; i<7; i++) {
-      qxtrk[i]->Reset();
-      qytrk[i]->Reset();
+    for(int i = 0; i<nqxorder; i++) {
+      qxtrk_p[i]->Reset();
+      qytrk_p[i]->Reset();
+      qxtrk_m[i]->Reset();
+      qytrk_m[i]->Reset();
     }
-    qcnt->Reset();
-    avpt->Reset();
+    qcnt_p->Reset();
+    avpt_p->Reset();
+    qcnt_m->Reset();
+    avpt_m->Reset();
     iEvent.getByToken(vertexToken,vertex_);
     VertexCollection recoVertices = *vertex_;
     int primaryvtx = 0;
@@ -340,8 +350,10 @@ private:
       double eta = itTrack->eta();
       double pt = itTrack->pt();
       double phi = itTrack->phi();
-      int ipt = qxtrk[0]->GetXaxis()->FindBin(itTrack->pt());
-      int ieta = qxtrk[0]->GetYaxis()->FindBin(itTrack->eta());
+      int ipt = qxtrk_p[0]->GetXaxis()->FindBin(itTrack->pt());
+      int ieta = qxtrk_p[0]->GetYaxis()->FindBin(itTrack->eta());
+      int iphiptbin = ieta-4;
+     
       double eff = 1.;
       // if(effTable_!="NULL") {
       // 	int ieffpt = Eff_0_5->GetYaxis()->FindBin(itTrack->pt());
@@ -355,13 +367,25 @@ private:
       // 	eff=1/eff;
       // }
       if(k>=0&&k<flatnvtxbins_) {
-	for(int iorder = 1; iorder <=7; iorder++) {
-	  qxtrk[iorder-1]->Fill(pt, eta, eff*(TMath::Cos(iorder*phi) - offsets[k].wqxtrkRef[iorder-1][bin]->GetBinContent(ipt,ieta)));
-	  qytrk[iorder-1]->Fill(pt, eta, eff*(TMath::Sin(iorder*phi) - offsets[k].wqytrkRef[iorder-1][bin]->GetBinContent(ipt,ieta)));
+	for(int iorder = 0; iorder <nqxorder; iorder++) {
+	  double order = qxorders[iorder];
+	  if(itTrack->charge()>0) {
+	    qxtrk_p[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	    qytrk_p[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	  } else if (itTrack->charge()<0) {
+	    qxtrk_m[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	    qytrk_m[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	  }
 	}
-	qcnt->Fill(itTrack->pt(), itTrack->eta(), eff);
+	if(itTrack->charge()>0) {
+	  qcnt_p->Fill(itTrack->pt(), itTrack->eta(), eff);
+	  avpt_p->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
+	} else {
+	  qcnt_m->Fill(itTrack->pt(), itTrack->eta(), eff);
+	  avpt_m->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
+	}
 	ptspec[bin]->Fill(pt,eta);
-	avpt->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
+	if(iphiptbin>=0 && iphiptbin<=5) hphipt[iphiptbin]->Fill(pt,phi*180./TMath::Pi());
       }
       if( itTrack->pt() < 0.2 ) continue;
       ++Ntrk;
@@ -585,27 +609,48 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   hNtrk = fs->make<TH1D>("Ntrk","Ntrk",1001,0,3000);
   hNoff = fs->make<TH1D>("Noff","Noff",1001,0,3000);
   int npt = nptbins;
-  for(int iorder = 1; iorder<=7; iorder++) {
-    qxtrk[iorder-1] = fs->make<TH2F>(Form("qxtrk%d",iorder),Form("qxtrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
-    qytrk[iorder-1] = fs->make<TH2F>(Form("qytrk%d",iorder),Form("qytrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
-    qxtrk[iorder-1]->SetOption("colz");
-    qytrk[iorder-1]->SetOption("colz");
-    qxtrk[iorder-1]->Sumw2();
-    qytrk[iorder-1]->Sumw2();
-    qxtrk[iorder-1]->SetXTitle("p_{T} (GeV/c");
-    qxtrk[iorder-1]->SetYTitle(Form("#eta (n=%d)",iorder));
-    qytrk[iorder-1]->SetXTitle("p_{T} (GeV/c");
-    qytrk[iorder-1]->SetYTitle(Form("#eta (n=%d)",iorder));
+  for(int iorder = 0; iorder<nqxorder; iorder++) {
+    qxtrk_p[iorder] = fs->make<TH2F>(Form("qxtrk_p%d",qxorders[iorder]),Form("qxtrk_p%d",qxorders[iorder]),npt,ptbins, netabinsDefault, etabinsDefault);
+    qytrk_p[iorder] = fs->make<TH2F>(Form("qytrk_p%d",qxorders[iorder]),Form("qytrk_p%d",qxorders[iorder]),npt,ptbins, netabinsDefault, etabinsDefault);
+    qxtrk_p[iorder]->SetOption("colz");
+    qytrk_p[iorder]->SetOption("colz");
+    qxtrk_p[iorder]->Sumw2();
+    qytrk_p[iorder]->Sumw2();
+    qxtrk_p[iorder]->SetXTitle("p_{T} (GeV/c");
+    qxtrk_p[iorder]->SetYTitle(Form("#eta (n=%d)",iorder));
+    qytrk_p[iorder]->SetXTitle("p_{T} (GeV/c");
+    qytrk_p[iorder]->SetYTitle(Form("#eta (n=%d)",iorder));
+
+    qxtrk_m[iorder] = fs->make<TH2F>(Form("qxtrk_m%d",qxorders[iorder]),Form("qxtrk_m%d",qxorders[iorder]),npt,ptbins, netabinsDefault, etabinsDefault);
+    qytrk_m[iorder] = fs->make<TH2F>(Form("qytrk_m%d",qxorders[iorder]),Form("qytrk_m%d",qxorders[iorder]),npt,ptbins, netabinsDefault, etabinsDefault);
+    qxtrk_m[iorder]->SetOption("colz");
+    qytrk_m[iorder]->SetOption("colz");
+    qxtrk_m[iorder]->Sumw2();
+    qytrk_m[iorder]->Sumw2();
+    qxtrk_m[iorder]->SetXTitle("p_{T} (GeV/c");
+    qxtrk_m[iorder]->SetYTitle(Form("#eta (n=%d)",iorder));
+    qytrk_m[iorder]->SetXTitle("p_{T} (GeV/c");
+    qytrk_m[iorder]->SetYTitle(Form("#eta (n=%d)",iorder));
   }
-  qcnt =  fs->make<TH2F>("qcnt", "qcnt",npt,ptbins, netabinsDefault, etabinsDefault);
-  qcnt->SetXTitle("p_{T} (GeV/c");
-  qcnt->SetYTitle("#eta");
-  avpt =  fs->make<TH2F>("avpt","avpt",npt,ptbins, netabinsDefault, etabinsDefault);
-  qcnt->SetOption("colz");
-  avpt->SetOption("colz");
-  qcnt->Sumw2();
-  avpt->Sumw2();
-  hTemplate = (TH2D *) qcnt->Clone("hTemplate");
+  qcnt_p =  fs->make<TH2F>("qcnt_p", "qcnt_p",npt,ptbins, netabinsDefault, etabinsDefault);
+  qcnt_p->SetXTitle("p_{T} (GeV/c");
+  qcnt_p->SetYTitle("#eta");
+  avpt_p =  fs->make<TH2F>("avpt_p","avpt_p",npt,ptbins, netabinsDefault, etabinsDefault);
+  qcnt_p->SetOption("colz");
+  avpt_p->SetOption("colz");
+  qcnt_p->Sumw2();
+  avpt_p->Sumw2();
+
+  qcnt_m =  fs->make<TH2F>("qcnt_m", "qcnt_m",npt,ptbins, netabinsDefault, etabinsDefault);
+  qcnt_m->SetXTitle("p_{T} (GeV/c");
+  qcnt_m->SetYTitle("#eta");
+  avpt_m =  fs->make<TH2F>("avpt_m","avpt_m",npt,ptbins, netabinsDefault, etabinsDefault);
+  qcnt_m->SetOption("colz");
+  avpt_m->SetOption("colz");
+  qcnt_m->Sumw2();
+  avpt_m->Sumw2();
+
+  hTemplate = (TH2D *) qcnt_p->Clone("hTemplate");
   hTemplate->SetDirectory(0);
   hTemplate->Reset();
   if(!trackq->is_GenMC()) {
@@ -632,6 +677,14 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
 	}
       }
     }
+  }
+  float phiang[361];
+  for(int i = -180; i<=180; i++) phiang[i+180]=(double) i;
+  for(int i = 0; i<6; i++) {
+    hphipt[i] = fs->make<TH2D>(Form("hphipt_%d",i),Form("hphipt_%d",i),npt,ptbins,360,phiang);
+    hphipt[i]->SetOption("colz");
+    hphipt[i]->SetXTitle("p_{T} (GeV/c)");
+    hphipt[i]->SetYTitle("#phi_{lab} (degrees)");
   }
   hcent = fs->make<TH1D>("cent","cent",220,-10,110);
   hvtx = fs->make<TH1D>("vtx","vtx",600,-30,30);
@@ -789,22 +842,18 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     tree->Branch("Run",     &runno_,   "run/i");
     tree->Branch("Rescor",  &rescor,   epnames.Data());
     tree->Branch("RescorErr",  &rescorErr,   epnames.Data());
-    tree->Branch("qxtrk1",  "TH2F",  &qxtrk[0], 128000, 0);
-    tree->Branch("qytrk1",  "TH2F",  &qytrk[0], 128000, 0);
-    tree->Branch("qxtrk2",  "TH2F",  &qxtrk[1], 128000, 0);
-    tree->Branch("qytrk2",  "TH2F",  &qytrk[1], 128000, 0);
-    tree->Branch("qxtrk3",  "TH2F",  &qxtrk[2], 128000, 0);
-    tree->Branch("qytrk3",  "TH2F",  &qytrk[2], 128000, 0);
-    tree->Branch("qxtrk4",  "TH2F",  &qxtrk[3], 128000, 0);
-    tree->Branch("qytrk4",  "TH2F",  &qytrk[3], 128000, 0);
-    tree->Branch("qxtrk5",  "TH2F",  &qxtrk[4], 128000, 0);
-    tree->Branch("qytrk5",  "TH2F",  &qytrk[4], 128000, 0);
-    tree->Branch("qxtrk6",  "TH2F",  &qxtrk[5], 128000, 0);
-    tree->Branch("qytrk6",  "TH2F",  &qytrk[5], 128000, 0);
-    tree->Branch("qxtrk7",  "TH2F",  &qxtrk[6], 128000, 0);
-    tree->Branch("qytrk7",  "TH2F",  &qytrk[6], 128000, 0);
-    tree->Branch("qcnt",    "TH2F",  &qcnt, 128000, 0);
-    tree->Branch("avpt",    "TH2F",  &avpt, 128000, 0);
+    for(int i = 0; i<nqxorder; i++) {
+      tree->Branch(Form("qxtrk_p%d",qxorders[i]),"TH2F", &qxtrk_p[i],128000,0);
+      tree->Branch(Form("qytrk_p%d",qxorders[i]),"TH2F", &qytrk_p[i],128000,0);
+      tree->Branch(Form("qxtrk_m%d",qxorders[i]),"TH2F", &qxtrk_m[i],128000,0);
+      tree->Branch(Form("qytrk_m%d",qxorders[i]),"TH2F", &qytrk_m[i],128000,0);
+    }
+    tree->Branch("qcnt_p",    "TH2F",  &qcnt_p, 128000, 0);
+    tree->Branch("avpt_p",    "TH2F",  &avpt_p, 128000, 0);
+    tree->Branch("qcnt_m",    "TH2F",  &qcnt_m, 128000, 0);
+    tree->Branch("avpt_m",    "TH2F",  &avpt_m, 128000, 0);
+  } else {
+    std::cout<<"skip tree"<<std::endl;
   }
 }
 
@@ -1024,6 +1073,7 @@ VNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   }
   if(makeTree_) tree->Fill(); 
+
 }
 
 
