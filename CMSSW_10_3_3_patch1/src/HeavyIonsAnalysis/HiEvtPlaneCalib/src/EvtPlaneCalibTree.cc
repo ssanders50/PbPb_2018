@@ -152,6 +152,12 @@ private:
   edm::InputTag inputPlanesTag_;
   edm::EDGetTokenT<reco::EvtPlaneCollection> inputPlanesToken;
   edm::Handle<reco::EvtPlaneCollection> inputPlanes_;
+  double sumcos=0;
+  double sumsin=0;
+  double sumcnt=0;
+  double sumcos2=0;
+  double sumsin2=0;
+  double sumcnt2=0;
 	
   double  dzdzerror_;
   double  d0d0error_;
@@ -350,12 +356,12 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   genMC_ = iConfig.getUntrackedParameter<bool>("genMC_",false);
   flatminvtx_ = iConfig.getParameter<double>("flatminvtx_") ;
   flatdelvtx_ = iConfig.getParameter<double>("flatdelvtx_") ;
-  chi2_  = iConfig.getUntrackedParameter<double>("chi2_",200.);
-  dzdzerror_ = iConfig.getUntrackedParameter<double>("dzdzerror_", 3.);
-  d0d0error_ = iConfig.getUntrackedParameter<double>("d0d0error_", 3.);
-  pterror_ = iConfig.getUntrackedParameter<double>("pterror_", 0.1);
-  dzdzerror_pix_ = iConfig.getUntrackedParameter<double>("dzdzerror_pix_") ;
-  d0d0error_pix_ = iConfig.getUntrackedParameter<double>("d0d0error_pix_") ;
+  chi2_  = iConfig.getParameter<double>("chi2_");
+  dzdzerror_ = iConfig.getParameter<double>("dzdzerror_");
+  d0d0error_ = iConfig.getParameter<double>("d0d0error_");
+  pterror_ = iConfig.getParameter<double>("pterror_");
+  dzdzerror_pix_ = iConfig.getParameter<double>("dzdzerror_pix_") ;
+  d0d0error_pix_ = iConfig.getParameter<double>("d0d0error_pix_") ;
   minvz_ = iConfig.getUntrackedParameter<double>("minvz_", -15.);
   maxvz_ = iConfig.getUntrackedParameter<double>("maxvz_", 15.);
   trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, d0d0error_pix_,chi2_);  
@@ -690,6 +696,21 @@ EvtPlaneCalibTree::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	if(pt>=0.3 && pt<3.0) ++evtrkcnt;
       }
       int k = (vtx-flatminvtx_)/flatdelvtx_;
+      
+      int ipt = offstruct[0].wqxtrk[0][0]->GetXaxis()->FindBin(itTrack->pt());
+      int ieta = offstruct[0].wqxtrk[0][0]->GetYaxis()->FindBin(itTrack->eta());
+      double order = 2;
+      //  std::cout<<order<<"\t"<<ipt<<"\t"<<ieta<<"\t"<<k<<"\t"<<phi<<std::endl;
+      if(order==2 && ipt == 2 && ieta == 8 && k == 4 && trkbin==0) {
+	sumcos+=TMath::Cos(order*phi);
+	sumsin+=TMath::Sin(order*phi);
+	++sumcnt;
+      }
+      if(order==2 && ipt == 7 && ieta == 8 && k == 4 && trkbin==0) {
+	sumcos2+=TMath::Cos(order*phi);
+	sumsin2+=TMath::Sin(order*phi);
+	++sumcnt2;
+      }
       if(k>=0&&k<flatnvtxbins_) {
  	for(int j = 0; j<7; j++) {
 	  offstruct[k].wqxtrk[j][trkbin]->Fill(pt, eta, cos( (1.+j) * phi ));
@@ -714,6 +735,16 @@ void
 EvtPlaneCalibTree::endJob() {
   cout<<"No. Events: "<<evcnt<<endl;
   cout<<"No. Tracks 0.3 to 3.0: "<<evtrkcnt<<endl;
+  sumcos/=sumcnt;
+  sumsin/=sumcnt;
+  std::cout<<"cnt: "<<sumcnt<<std::endl;
+  std::cout<<"cos: "<<sumcos<<"\t"<<std::endl;
+  std::cout<<"sin: "<<sumsin<<"\t"<<std::endl;
+  sumcos2/=sumcnt2;
+  sumsin2/=sumcnt2;
+  std::cout<<"cnt2: "<<sumcnt2<<std::endl;
+  std::cout<<"cos2: "<<sumcos2<<"\t"<<std::endl;
+  std::cout<<"sin2: "<<sumsin2<<"\t"<<std::endl;
 }
 ///
 
