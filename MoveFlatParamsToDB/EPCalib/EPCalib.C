@@ -61,6 +61,16 @@ struct offstruct  offs[12];
 
 Bool_t test = false;
 int ntest = 100000000;
+  double sumcos=0;
+  double sumsin=0;
+  double sumcnt=0;
+  double refsumcos=0;
+  double refsumsin=0;
+  double sumcos2=0;
+  double sumsin2=0;
+  double sumcnt2=0;
+  double refsumcos2=0;
+  double refsumsin2=0;
 
 float centval;
 float vtx;
@@ -155,6 +165,7 @@ string ressaveName;
 #include "src/Loop3.h"
 #include "src/rescor.h"
 void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "tmp.lis",  string ssave="/rfs/sanders/tmpPbPb", string epsave="/rfs/sanders/EPPbPb.root",string foffsave="/rfs/sanders/foff.root", string ressave="Rescor"){
+  TH1I * runchk = NULL;
   saveName=ssave;
   epsaveName=epsave;
   ressaveName = "RescorSave/Rescor_"+to_string(minRun)+"_"+to_string(maxRun);
@@ -162,6 +173,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
   maxRun_ = maxRun;
   cout<<"minRun: "<<minRun_<<endl;
   cout<<"maxRun: "<<maxRun_<<endl;
+  if(minRun<326381) minRun=326381;
   save = fopen(saveName.data(),"wb");
   int Hbins = 0;
   int Obins = 0;
@@ -200,6 +212,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
   hvtx = new TH1D("hvtx","vertex",200,-30,30);
   hflatbins = new TH1D("hflatbins","hflatbins",100,0,100);
   TFile * tf = new TFile(fnames[0].Data(),"read");
+
   TH1D * fparams = (TH1D *)tf->Get("evtPlaneCalibTree/fparams");
   TH1I * iparams = (TH1I *)tf->Get("evtPlaneCalibTree/iparams");
   minet_ = fparams->GetBinContent(1);
@@ -335,10 +348,18 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
   totentries = 0;
   for(int findx = 0; findx< lcnt; findx++) {
     tf = new TFile(fnames[findx].Data(),"read");
+    runchk = new TH1I("runchk","runchk",maxRun-minRun+1,minRun,maxRun+1);
     if(tf->IsZombie())                 {cout<<"ZOMBIE:    " <<fnames[findx].Data()<<endl; continue;}
     if(tf->TestBit(TFile::kRecovered)) {cout<<"RECOVERED: " <<fnames[findx].Data()<<endl; continue;}
-
     tree = (TTree *) tf->Get("evtPlaneCalibTree/tree");
+    runchk->Reset();
+    tree->Draw("Run>>runchk","","goff");
+    //cout<<fnames[findx].Data()<<" - "<<runchk->Integral(1,runchk->GetNbinsX())<<endl;
+    if(runchk->Integral(1,runchk->GetNbinsX())<100) {
+      runchk->Delete();
+      continue;
+    }
+    runchk->Delete();
     tree->SetBranchAddress("Cent",    &centval);
     tree->SetBranchAddress("Vtx",     &vtx);
     tree->SetBranchAddress("Run",     &runno_);
@@ -368,16 +389,27 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
 	  
 	  offs[k].wqcnt[i] =(TH2D *)  tf->Get(qcntname.data())->Clone(Form("wqcnt_%d_%d",k,i));
 	  offs[k].wqcnt[i]->SetDirectory(0);
-	  for(int k = 0; k<flatnvtxbins_; k++) {
-	    for(int j = 1; j<=7; j++){
-	      string qxname = name + "/wqxtrk"+to_string(j)+"_"+to_string(k)+"_"+to_string(i);
-	      string qyname = name + "/wqytrk"+to_string(j)+"_"+to_string(k)+"_"+to_string(i);
-	      offs[k].wqxtrk[j-1][i] =(TH2D *)  tf->Get(qxname.data())->Clone(Form("wqxtrk_%d_%d_%d",j,k,i));
-	      offs[k].wqxtrk[j-1][i]->SetDirectory(0);
-	      offs[k].wqytrk[j-1][i] =(TH2D *)  tf->Get(qyname.data())->Clone(Form("wqytrk_%d_%d_%d",j,k,i));
-	      offs[k].wqytrk[j-1][i]->SetDirectory(0); 
+	  for(int j = 1; j<=7; j++){
+	    string qxname = name + "/wqxtrk"+to_string(j)+"_"+to_string(k)+"_"+to_string(i);
+	    string qyname = name + "/wqytrk"+to_string(j)+"_"+to_string(k)+"_"+to_string(i);
+	    offs[k].wqxtrk[j-1][i] =(TH2D *)  tf->Get(qxname.data())->Clone(Form("wqxtrk_%d_%d_%d",j,k,i));
+	    offs[k].wqxtrk[j-1][i]->SetDirectory(0);
+	    offs[k].wqytrk[j-1][i] =(TH2D *)  tf->Get(qyname.data())->Clone(Form("wqytrk_%d_%d_%d",j,k,i));
+	    offs[k].wqytrk[j-1][i]->SetDirectory(0); 
+	    if(j==2 && i== 0 && k==4) {
+	      cout<<qcntname<<endl;
+	      cout<<"files: "<<offs[k].wqxtrk[j-1][i]<<"\t"<<offs[k].wqytrk[j-1][i]<<"\t"<<offs[k].wqcnt[i]<<endl;
+	      sumcos+=offs[k].wqxtrk[j-1][i]->GetBinContent(2,8);
+	      sumsin+=offs[k].wqytrk[j-1][i]->GetBinContent(2,8);
+	      sumcnt+=offs[k].wqcnt[i]->GetBinContent(2,8);
+	    }
+	    if(j==2 && i== 0 && k==4) {
+	    	sumcos2+=offs[k].wqxtrk[j-1][i]->GetBinContent(7,8);
+	    	sumsin2+=offs[k].wqytrk[j-1][i]->GetBinContent(7,8);
+	    	sumcnt2+=offs[k].wqcnt[i]->GetBinContent(7,8);
 	    }
 	  }
+	  
 	}
       }
       first = false;
@@ -389,7 +421,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
 	} else {
 	  name = "evtPlaneCalibTree/"+to_string((int)centbins[i])+"_"+to_string((int)centbins[i+1]);
 	}
-
+	
 	for(int k = 0; k<flatnvtxbins_;k++) { 
 	  string qcntname = name + "/wqcnt_"+to_string(k)+"_"+to_string(i);
 	  offs[k].wqcnt[i]->Add((TH2D *)  tf->Get(qcntname.data()));
@@ -398,11 +430,20 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
 	    string qyname = name + "/wqytrk"+to_string(j)+"_"+to_string(k)+"_"+to_string(i);
 	    offs[k].wqxtrk[j-1][i]->Add((TH2D *)  tf->Get(qxname.data()));
 	    offs[k].wqytrk[j-1][i]->Add((TH2D *)  tf->Get(qyname.data())); 
+	    // if(j==2 && i== 0 && k==4) {
+	    // 	sumcos+=offs[k].wqxtrk[j-1][i]->GetBinContent(2,8);
+	    // 	sumsin+=offs[k].wqytrk[j-1][i]->GetBinContent(2,8);
+	    // 	sumcnt+=offs[k].wqcnt[i]->GetBinContent(2,8);
+	    // }
+	    // if(j==2 && i== 0 && k==4) {
+	    // 	sumcos2+=offs[k].wqxtrk[j-1][i]->GetBinContent(7,8);
+	    // 	sumsin2+=offs[k].wqytrk[j-1][i]->GetBinContent(7,8);
+	    // 	sumcnt2+=offs[k].wqcnt[i]->GetBinContent(7,8);
+	    // }
 	  }
 	}
       }
     }
-
     nentries = tree->GetEntries();
     cout<<"Loop 0: "<<tf->GetName()<<"\t"<<nentries<<"\t"<<totentries<<endl;
     Loop0();
@@ -424,9 +465,20 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
     if(test && ncnt>=ntest) break;
   }
   if(totentries==0) {
-    cout<<"There are no events that satisfy cuts. Exit."<<endl;
+    //cout<<"There are no events that satisfy cuts. Exit."<<endl;
     return ;
   }
+  sumcos/=sumcnt;
+  sumsin/=sumcnt;
+  std::cout<<"cnt: "<<sumcnt<<std::endl;
+  std::cout<<"cos: "<<sumcos<<"\t"<<std::endl;
+  std::cout<<"sin: "<<sumsin<<"\t"<<std::endl;
+  sumcos2/=sumcnt2;
+  sumsin2/=sumcnt2;
+  std::cout<<"cnt2: "<<sumcnt2<<std::endl;
+  std::cout<<"cos2: "<<sumcos2<<"\t"<<std::endl;
+  std::cout<<"sin2: "<<sumsin2<<"\t"<<std::endl;
+
   //
   // Loop 1
   //
@@ -438,6 +490,14 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
     if(tf->IsZombie())                 {cout<<"ZOMBIE:    " <<fnames[findx].Data()<<endl; continue;}
     if(tf->TestBit(TFile::kRecovered)) {cout<<"RECOVERED: " <<fnames[findx].Data()<<endl; continue;}
     tree = (TTree *) tf->Get("evtPlaneCalibTree/tree");
+    runchk = new TH1I("runchk","runchk",maxRun-minRun+1,minRun,maxRun+1);
+    runchk->Reset();
+    tree->Draw("Run>>runchk","","goff");
+    if(runchk->Integral(1,runchk->GetNbinsX())<100) {
+      runchk->Delete();
+      continue;
+    }
+    runchk->Delete();
     tree->SetBranchAddress("Cent",    &centval);
     tree->SetBranchAddress("Vtx",     &vtx);
     tree->SetBranchAddress("Run",     &runno_);
