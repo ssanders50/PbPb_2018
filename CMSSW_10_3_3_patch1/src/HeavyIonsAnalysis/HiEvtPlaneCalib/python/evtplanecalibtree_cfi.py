@@ -18,9 +18,9 @@ evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
                             flatminvtx_ = cms.double(-15.0),
                             flatdelvtx_ = cms.double(3.0),
 #                            dzerr_ = cms.untracked.double(10.),
-                            dzdzerror_ = cms.untracked.double(3.),
-                            d0d0error_ = cms.untracked.double(3.),
-                            pterror_ = cms.untracked.double(0.1),
+                            dzdzerror_ = cms.double(3.),
+                            d0d0error_ = cms.double(3.),
+                            pterror_ = cms.double(0.1),
                             useNtrkBins_ = cms.untracked.bool(False),
                             genMC_ = cms.untracked.bool(False),
                             bTag_ = cms.InputTag("mcEvtPlane","b","FlatCalib"),
@@ -28,9 +28,9 @@ evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
                             trackTag = cms.InputTag("hiGeneralTracks"),
                             minvz_ = cms.untracked.double(-15.),
                             maxvz_ = cms.untracked.double(15.),
-                            dzdzerror_pix_ = cms.untracked.double(8.0),
-                            d0d0error_pix_ = cms.untracked.double(8.0),
-                            chi2_ = cms.untracked.double(12.)
+                            dzdzerror_pix_ = cms.double(8.0),
+                            d0d0error_pix_ = cms.double(8.0),
+                            chi2_ = cms.double(12.)
                             )
                             
 
