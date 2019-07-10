@@ -100,6 +100,16 @@ private:
   // ----------member data ---------------------------
   int eporder_;
   int mx;
+  double sumcos=0;
+  double sumsin=0;
+  double sumcnt=0;
+  double refsumcos=0;
+  double refsumsin=0;
+  double sumcos2=0;
+  double sumsin2=0;
+  double sumcnt2=0;
+  double refsumcos2=0;
+  double refsumsin2=0;
   std::string centralityVariable_;
   std::string centralityLabel_;
   std::string centralityMC_;
@@ -173,6 +183,7 @@ private:
   double minvz_;
   double maxvz_;
   double dzdzerror_pix_;
+  double d0d0error_pix_;
   double chi2_;
 
   double dzdzerror_;
@@ -253,7 +264,8 @@ private:
   } offsets[12];
   int nCentBins_ = 1;
   int ntrack;
-  TH2D * hphipt[6];
+  TH2D * hpsicorrLow[6];
+  TH2D * hpsicorrHigh[6];
 
   TH2D * hTemplate;
   //===================================
@@ -276,8 +288,8 @@ private:
     iEvent.getByToken(vertexToken,vertex_);
     VertexCollection recoVertices = *vertex_;
     int primaryvtx = 0;
-    TrackQuality * tracknoff = new TrackQuality(trackTag_, 3., 3., 0.1, 10., 40.);
-    if(tracknoff->is_ppReco()) {
+    //TrackQuality * tracknoff = new TrackQuality(trackTag_, 3., 3., 0.1, 10., 40.);
+    if(trackq->is_ppReco()) {
       if ( recoVertices.size() > 100 ) return -1;
       sort(recoVertices.begin(), recoVertices.end(), [](const reco::Vertex &a, const reco::Vertex &b){
 	  if ( a.tracksSize() == b.tracksSize() ) return a.chi2() < b.chi2();
@@ -297,7 +309,7 @@ private:
     iEvent.getByLabel(trackTag_,trackCollection_);
     
     for(TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); ++itTrack) { 
-      if(!tracknoff->isGood(itTrack,recoVertices)) continue;
+      if(!trackq->isGood(itTrack,recoVertices)) continue;
       
       if( itTrack->pt() < 0.4 ) continue;
       ++N;
@@ -306,7 +318,7 @@ private:
   }
   
   
-  int fillTracks(const edm::Event& iEvent, const edm::EventSetup& iSetup, int bin)
+  int fillTracks(const edm::Event& iEvent, const edm::EventSetup& iSetup, int bin, double hf2ang)
   {
     int Ntrk = 0;
     using namespace edm;
@@ -342,9 +354,14 @@ private:
     if (fabs(vtx) < minvz_ || fabs(vtx) > maxvz_) {
       return -1;
     }        
-    
+    int cntLow[6]={0,0,0,0,0,0} ;
+    int cntHigh[6]={0,0,0,0,0,0};
     iEvent.getByLabel(trackTag_,trackCollection_);
     int k = (vtx-flatminvtx_)/flatdelvtx_;
+    double spsiLow[6]={0,0,0,0,0,0};
+    double cpsiLow[6]={0,0,0,0,0,0};
+    double spsiHigh[6]={0,0,0,0,0,0};
+    double cpsiHigh[6]={0,0,0,0,0,0};
     for(TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); ++itTrack) { 
       if(!trackq->isGood(itTrack,recoVertices)) continue;
       double eta = itTrack->eta();
@@ -352,7 +369,7 @@ private:
       double phi = itTrack->phi();
       int ipt = qxtrk_p[0]->GetXaxis()->FindBin(itTrack->pt());
       int ieta = qxtrk_p[0]->GetYaxis()->FindBin(itTrack->eta());
-      int iphiptbin = ieta-4;
+      int ipsibin = ieta-4;
      
       double eff = 1.;
       // if(effTable_!="NULL") {
@@ -370,25 +387,59 @@ private:
 	for(int iorder = 0; iorder <nqxorder; iorder++) {
 	  double order = qxorders[iorder];
 	  if(itTrack->charge()>0) {
-	    qxtrk_p[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
-	    qytrk_p[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	    qxtrk_p[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta)));
+	    qytrk_p[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta)));
 	  } else if (itTrack->charge()<0) {
-	    qxtrk_m[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
-	    qytrk_m[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]][bin]->GetBinContent(ipt,ieta)));
+	    qxtrk_m[iorder]->Fill(pt, eta, eff*(TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta)));
+	    qytrk_m[iorder]->Fill(pt, eta, eff*(TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta)));
 	  }
+	  if(order==2 && ipt == 2 && ieta == 8 && k == 4 && bin==0) {
+	    sumcos+=TMath::Cos(order*phi);
+	    sumsin+=TMath::Sin(order*phi);
+	    refsumcos+=offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    refsumsin+= offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    ++sumcnt;
+	    //cout<<sumcnt<<"\t"<<k<<"\t"<<qxorders[iorder]<<"\t"<<bin<<"\t"<<ipt<<"\t"<<ieta<<refsumcos/sumcnt<<"\t"<<refsumsin/sumcnt<<endl;
+	  }
+	  if(order==2 && ipt == 7 && ieta == 8 && k == 4 && bin==0) {
+	    sumcos2+=TMath::Cos(order*phi);
+	    sumsin2+=TMath::Sin(order*phi);
+	    refsumcos2+=offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    refsumsin2+= offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    ++sumcnt2;
+	  }
+	  if(ipsibin>=0 && ipsibin<=5&&pt<0.5 && order == 2) {
+	    ++cntLow[ipsibin];
+	    cpsiLow[ipsibin]+=TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    spsiLow[ipsibin]+=TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	  };
+	  if(ipsibin>=0 && ipsibin<=5&&fabs(pt-1.2)<0.2 && order == 2) {
+	    ++cntHigh[ipsibin];
+	    cpsiHigh[ipsibin]+=TMath::Cos(order*phi) - offsets[k].wqxtrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	    spsiHigh[ipsibin]+=TMath::Sin(order*phi) - offsets[k].wqytrkRef[qxorders[iorder]-1][bin]->GetBinContent(ipt,ieta);
+	  };
 	}
 	if(itTrack->charge()>0) {
 	  qcnt_p->Fill(itTrack->pt(), itTrack->eta(), eff);
 	  avpt_p->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
-	} else {
+	} else if(itTrack->charge()<0){
 	  qcnt_m->Fill(itTrack->pt(), itTrack->eta(), eff);
 	  avpt_m->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
 	}
 	ptspec[bin]->Fill(pt,eta);
-	if(iphiptbin>=0 && iphiptbin<=5) hphipt[iphiptbin]->Fill(pt,phi*180./TMath::Pi());
       }
       if( itTrack->pt() < 0.2 ) continue;
       ++Ntrk;
+    }
+    for(int i = 0; i<=5; i++) {
+      if(cntLow[i]>2) {
+	double angLow = atan2(spsiLow[i],cpsiLow[i])/2.;
+	hpsicorrLow[i]->Fill(hf2ang,angLow);
+      }
+      if(cntHigh[i]>2) {
+	double angHigh = atan2(spsiHigh[i],cpsiHigh[i])/2.;
+	hpsicorrHigh[i]->Fill(hf2ang,angHigh);
+      }
     }
     return Ntrk;
   }
@@ -489,13 +540,14 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     pfTag_ = iConfig.getUntrackedParameter<edm::InputTag>("pfTag");
     pfToken_ = consumes<reco::PFCandidateCollection>(pfTag_);
   }
-  dzdzerror_ = iConfig.getUntrackedParameter<double>("dzdzerror_", 3.);
-  d0d0error_ = iConfig.getUntrackedParameter<double>("d0d0error_", 3.);
-  pterror_ = iConfig.getUntrackedParameter<double>("pterror_",0.1);
-  dzdzerror_pix_ = iConfig.getUntrackedParameter<double>("dzdzerror_pix_") ;
-  chi2_  = iConfig.getUntrackedParameter<double>("chi2_") ;
+  dzdzerror_ = iConfig.getParameter<double>("dzdzerror_");
+  d0d0error_ = iConfig.getParameter<double>("d0d0error_");
+  pterror_ = iConfig.getParameter<double>("pterror_");
+  dzdzerror_pix_ = iConfig.getParameter<double>("dzdzerror_pix_") ;
+  d0d0error_pix_ = iConfig.getParameter<double>("d0d0error_pix_") ;
+  chi2_  = iConfig.getParameter<double>("chi2_") ;
   
-  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_, chi2_);  
+  trackq = new TrackQuality(trackTag_, dzdzerror_, d0d0error_, pterror_, dzdzerror_pix_,d0d0error_pix_, chi2_);  
   teff = 0;
   if(effTable_!="NULL") teff = new TrackEfficiency(effTable_.data());
   minvz_ = iConfig.getUntrackedParameter<double>("minvz_", -15.);
@@ -540,9 +592,11 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     std::cout<<"reso_                     "<<reso_<<std::endl;   
   }
   std::cout<<"dzdzerror_pix_               "<<dzdzerror_pix_<<std::endl;
+  std::cout<<"d0d0error_pix_               "<<d0d0error_pix_<<std::endl;
   std::cout<<"chi2_                        "<<chi2_<<std::endl;
   if(Recenter_) { 
     std::cout<<"Recenter_                  true"<<std::endl;
+    std::cout<<"    offset file:           "<<offsetFileName<<std::endl;
   } else {
     std::cout<<"Recenter_                  false"<<std::endl;
   }
@@ -581,6 +635,8 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   conddir.make<TH1I>(note_d0d0error.data(), note_d0d0error.data(),1,0,1);
   string note_dzdzerror_pix = Form("dzdzerror_pix_%07.2f",dzdzerror_pix_);
   conddir.make<TH1I>(note_dzdzerror_pix.data(), note_dzdzerror_pix.data(),1,0,1);
+  string note_d0d0error_pix = Form("d0d0error_pix_%07.2f",d0d0error_pix_);
+  conddir.make<TH1I>(note_d0d0error_pix.data(), note_d0d0error_pix.data(),1,0,1);
   string note_chi2 = Form("chi2_%07.2f",chi2_);
   conddir.make<TH1I>(note_chi2.data(), note_chi2.data(),1,0,1);
   string note_vtx_range = Form("vtx_%5.1f_%5.1f",minvz_,maxvz_);
@@ -678,13 +734,17 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
       }
     }
   }
-  float phiang[361];
-  for(int i = -180; i<=180; i++) phiang[i+180]=(double) i;
+  //float phiang[361];
+  //for(int i = -180; i<=180; i++) phiang[i+180]=(double) i;
   for(int i = 0; i<6; i++) {
-    hphipt[i] = fs->make<TH2D>(Form("hphipt_%d",i),Form("hphipt_%d",i),npt,ptbins,360,phiang);
-    hphipt[i]->SetOption("colz");
-    hphipt[i]->SetXTitle("p_{T} (GeV/c)");
-    hphipt[i]->SetYTitle("#phi_{lab} (degrees)");
+    hpsicorrLow[i] = fs->make<TH2D>(Form("hpsicorrLow_%d",i),Form("hpsicorrLow_%d",i),100,-2,2,100,-2,2);
+    hpsicorrLow[i]->SetOption("colz");
+    hpsicorrLow[i]->SetXTitle("p_{T} (GeV/c)");
+    hpsicorrLow[i]->SetYTitle("#phi_{lab} (degrees)");
+    hpsicorrHigh[i] = fs->make<TH2D>(Form("hpsicorrHigh_%d",i),Form("hpsicorrHigh_%d",i),100,-2,2,100,-2,2);
+    hpsicorrHigh[i]->SetOption("colz");
+    hpsicorrHigh[i]->SetXTitle("p_{T} (GeV/c)");
+    hpsicorrHigh[i]->SetYTitle("#phi_{lab} (degrees)");
   }
   hcent = fs->make<TH1D>("cent","cent",220,-10,110);
   hvtx = fs->make<TH1D>("vtx","vtx",600,-30,30);
@@ -860,6 +920,20 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
 
 VNAnalyzer::~VNAnalyzer()
 {
+  sumcos/=sumcnt;
+  sumsin/=sumcnt;
+  refsumcos/=sumcnt;
+  refsumsin/=sumcnt;
+  std::cout<<"cnt: "<<sumcnt<<std::endl;
+  std::cout<<"cos: "<<sumcos<<"\t"<<refsumcos<<std::endl;
+  std::cout<<"sin: "<<sumsin<<"\t"<<refsumsin<<std::endl;
+  sumcos2/=sumcnt2;
+  sumsin2/=sumcnt2;
+  refsumcos2/=sumcnt2;
+  refsumsin2/=sumcnt2;
+  std::cout<<"cnt2: "<<sumcnt2<<std::endl;
+  std::cout<<"cos2: "<<sumcos2<<"\t"<<refsumcos2<<std::endl;
+  std::cout<<"sin2: "<<sumsin2<<"\t"<<refsumsin2<<std::endl;
   if(frecenter!=NULL) frecenter->Close();  
   // do anything here that needs to be done at desctruction time
   // (e.g. close files, deallocate resources etc.)
@@ -959,10 +1033,10 @@ VNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     hRP->Fill(rp);
 
   } 
-  int ntrkval=fillTracks(iEvent, iSetup, ibin);
-  if(ntrkval<=0) return;
-  hvtx->Fill(vtx);
-  hNtrk->Fill(ntrkval);
+  // int ntrkval=fillTracks(iEvent, iSetup, ibin);
+  // if(ntrkval<=0) return;
+  // hvtx->Fill(vtx);
+  // hNtrk->Fill(ntrkval);
   //
   // Get Event Planes
   //
@@ -1018,7 +1092,11 @@ VNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
     ++indx; 
   }
-  
+  int ntrkval=fillTracks(iEvent, iSetup, ibin, epang[HFp2]);
+  if(ntrkval<=0) return;
+  hvtx->Fill(vtx);
+  hNtrk->Fill(ntrkval);
+ 
   for(int iorder = 1; iorder <=7; iorder++) {
     int epmin = 0;
     int epmax = 0;
