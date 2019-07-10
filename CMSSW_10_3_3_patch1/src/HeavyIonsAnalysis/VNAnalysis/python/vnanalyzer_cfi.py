@@ -34,11 +34,12 @@ vnanalyzer = cms.EDAnalyzer("VNAnalyzer",
                             nvtx_ = cms.untracked.int32(100),
                             minvz_ = cms.untracked.double(-15.),
                             maxvz_ = cms.untracked.double(15.),
-                            dzdzerror_ = cms.untracked.double(3.0),
-                            d0d0error_ = cms.untracked.double(3.0),
-                            pterror_ = cms.untracked.double(0.1),
+                            dzdzerror_ = cms.double(3.0),
+                            d0d0error_ = cms.double(3.0),
+                            pterror_ = cms.double(0.1),
                             Recenter = cms.untracked.bool(False),
                             EPLevel = cms.untracked.int32(2),
-                            dzdzerror_pix_ = cms.untracked.double(8.0),
-                            chi2_ = cms.untracked.double(12.)
+                            dzdzerror_pix_ = cms.double(7.0),
+                            d0d0error_pix_ = cms.double(20.0),
+                            chi2_ = cms.double(0.18)
  )
