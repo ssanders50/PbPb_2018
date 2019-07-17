@@ -27,7 +27,7 @@ static const int MAXROI = 500;
 static const int MAXRUNS = 500; 
 class Framework{
 public:
-  Framework(string filelist="filelist.dat", bool EffCorrect = true);
+  Framework(string filelist="filelist.dat", bool EffCorrect = true, int histbins = 100, double maxvn=0.6);
   bool AddFile();
   int GetN(){return maxevents;}
   void GetEntry(int i){tr->GetEntry(i);}
@@ -192,7 +192,8 @@ private:
   TH1D * qdify_m;
   int nruns;
   double runlist[MAXRUNS];
-
+  int nhistbins_;
+  double maxvn_;
   struct range {
     int order;
     int orderIndx;
@@ -460,8 +461,10 @@ bool Framework::AddFile(){
   tr->SetBranchAddress("avpt_m",    &avpt_m);
   return true;
 }
-Framework::Framework(string filelist, bool EffCorrect){
+Framework::Framework(string filelist, bool EffCorrect, int nhistbins, double maxvn){
   ran = new TRandom();
+  nhistbins_ = nhistbins;
+  maxvn_ = maxvn;
   cout<<"open: "<<filelist<<endl;
   //system("cat filelist.dat");
   flist = fopen(filelist.data(),"r");
@@ -551,6 +554,7 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   			    Form("vn2d_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d->SetOption("colz");
   r[nrange].vn2d->SetDirectory(0);
+  r[nrange].vn2d->Sumw2();
   r[nrange].vn2d->SetXTitle(Form("v_{n,x}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn2d->SetYTitle("v_{n,y}^{obs}");
 
@@ -558,6 +562,7 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   			    Form("vn2d_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d_p->SetOption("colz");
   r[nrange].vn2d_p->SetDirectory(0);
+  r[nrange].vn2d_p->Sumw2();
   r[nrange].vn2d_p->SetXTitle(Form("v_{n,x}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn2d_p->SetYTitle("v_{n,y}^{obs}");
 
@@ -565,44 +570,51 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   			    Form("vn2d_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),100,-1.4,1.4,100,-1.4,1.4);
   r[nrange].vn2d_m->SetOption("colz");
   r[nrange].vn2d_m->SetDirectory(0);
+  r[nrange].vn2d_m->Sumw2();
   r[nrange].vn2d_m->SetXTitle(Form("v_{n,x}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn2d_m->SetYTitle("v_{n,y}^{obs}");
 
   //
   r[nrange].vn1d = new TH1D(Form("vn1d_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  			    Form("vn1d_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  			    Form("vn1d_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1d->SetDirectory(0);
+  r[nrange].vn1d->Sumw2();
   r[nrange].vn1d->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1d->SetYTitle("Counts");
 
   r[nrange].vn1d_p = new TH1D(Form("vn1d_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  			    Form("vn1d_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  			    Form("vn1d_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1d_p->SetDirectory(0);
+  r[nrange].vn1d_p->Sumw2();
   r[nrange].vn1d_p->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1d_p->SetYTitle("Counts");
 
   r[nrange].vn1d_m = new TH1D(Form("vn1d_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  			    Form("vn1d_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  			    Form("vn1d_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1d_m->SetDirectory(0);
+  r[nrange].vn1d_m->Sumw2();
   r[nrange].vn1d_m->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1d_m->SetYTitle("Counts");
 
   //
   r[nrange].vn1dMult = new TH1D(Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  				Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  				Form("vn1dMult_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1dMult->SetDirectory(0);
+  r[nrange].vn1dMult->Sumw2();
   r[nrange].vn1dMult->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1dMult->SetYTitle("AvMult");
 
   r[nrange].vn1dMult_p = new TH1D(Form("vn1dMult_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  				Form("vn1dMult_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  				Form("vn1dMult_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1dMult_p->SetDirectory(0);
+  r[nrange].vn1dMult_p->Sumw2();
   r[nrange].vn1dMult_p->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1dMult_p->SetYTitle("AvMult");
 
   r[nrange].vn1dMult_m = new TH1D(Form("vn1dMult_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
-  				Form("vn1dMult_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),1000,0,1.4);
+  				Form("vn1dMult_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),nhistbins_,0,maxvn_);
   r[nrange].vn1dMult_m->SetDirectory(0);
+  r[nrange].vn1dMult_m->Sumw2();
   r[nrange].vn1dMult_m->SetXTitle(Form("v_{n}^{obs} (%3.1f < #eta <  %3.1f)",minEta,maxEta));
   r[nrange].vn1dMult_m->SetYTitle("AvMult");
 
@@ -610,15 +622,16 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
   r[nrange].mult = new TH1D(Form("mult_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
   			    Form("mult_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),2000,0,2000);
   r[nrange].mult->SetDirectory(0);
-
+  r[nrange].mult->Sumw2();
   r[nrange].mult_p = new TH1D(Form("mult_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
   			    Form("mult_p_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),2000,0,2000);
   r[nrange].mult_p->SetDirectory(0);
+  r[nrange].mult_p->Sumw2();
 
   r[nrange].mult_m = new TH1D(Form("mult_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
   			    Form("mult_m_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),2000,0,2000);
   r[nrange].mult_m->SetDirectory(0);
-
+  r[nrange].mult_m->Sumw2();
   //
   if(runs!= NULL) {
     r[nrange].runcnt = new TH1D(Form("runcnt_%d_%d_%d_%03.1f_%03.1f_%04.2f_%04.2f",order,minCent,maxCent,minEta,maxEta,minPt,maxPt),
@@ -666,18 +679,16 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].qoffx = (TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/qx_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
     r[nrange].qoffx->Divide((TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qoffx->SetDirectory(0);
-
     r[nrange].qoffy = (TH1D *)foff->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
     r[nrange].qoffy->Divide((TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qoffy->SetDirectory(0);
-
     
     r[nrange].qdifx = (TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/qdifx",minCent,maxCent,minPt,maxPt));
     r[nrange].qdify = (TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/qdify",minCent,maxCent,minPt,maxPt));
     r[nrange].qdifx->Divide((TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdify->Divide((TH1D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdifx->SetDirectory(0);
-    r[nrange].qdify->SetDirectory(0);    
+    r[nrange].qdify->SetDirectory(0);
 
 
     r[nrange].smear = (TH2D *) foff->Get(Form("%d_%d/%4.2f_%4.2f/diff2d",minCent,maxCent,minPt,maxPt));
@@ -688,17 +699,15 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].qoffx_p = (TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/qx_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
     r[nrange].qoffx_p->Divide((TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qoffx_p->SetDirectory(0);
-
     r[nrange].qoffy_p = (TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/qy_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta));
     r[nrange].qoffy_p->Divide((TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/RunAverages/cnt_%3.1f_%3.1f",minCent,maxCent,minPt,maxPt,minEta,maxEta)));
     r[nrange].qoffy_p->SetDirectory(0);
-
     r[nrange].qdifx_p = (TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/qdifx",minCent,maxCent,minPt,maxPt));
     r[nrange].qdify_p = (TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/qdify",minCent,maxCent,minPt,maxPt));
     r[nrange].qdifx_p->Divide((TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdify_p->Divide((TH1D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdifx_p->SetDirectory(0);
-    r[nrange].qdify_p->SetDirectory(0);    
+    r[nrange].qdify_p->SetDirectory(0);
     r[nrange].smear_p = (TH2D *) foff_p->Get(Form("%d_%d/%4.2f_%4.2f/diff2d",minCent,maxCent,minPt,maxPt));
     r[nrange].smear_p->SetDirectory(0);
   }
@@ -717,7 +726,7 @@ int Framework::SetROIRange(int order, int minCent, int maxCent, double minEta, d
     r[nrange].qdifx_m->Divide((TH1D *) foff_m->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdify_m->Divide((TH1D *) foff_m->Get(Form("%d_%d/%4.2f_%4.2f/qdifcnt",minCent,maxCent,minPt,maxPt)));
     r[nrange].qdifx_m->SetDirectory(0);
-    r[nrange].qdify_m->SetDirectory(0);    
+    r[nrange].qdify_m->SetDirectory(0);
     r[nrange].smear_m = (TH2D *) foff_m->Get(Form("%d_%d/%4.2f_%4.2f/diff2d",minCent,maxCent,minPt,maxPt));
     r[nrange].smear_m->SetDirectory(0);
   }
@@ -1062,7 +1071,10 @@ double Framework::GetqABC(int roi) {
     double deta = etamax-etamin;
     double dpt = spec1d->GetBinWidth(i+1);
     double binpt = spec1d->GetXaxis()->GetBinCenter(i+1);
-    double eff = heff->GetBinContent(heff->GetXaxis()->FindBin(bineta),heff->GetYaxis()->FindBin(binpt));
+    double eff = 1;
+    if(effCorrect) {
+      eff = heff->GetBinContent(heff->GetXaxis()->FindBin(bineta),heff->GetYaxis()->FindBin(binpt));
+    }
     if(debug) cout<<spec1draw->GetXaxis()->GetBinCenter(i+1)<<"\t"<<spec1d->GetXaxis()->GetBinCenter(i+1)<<"\t"<<eff<<"\t"<<spec1draw->GetBinContent(i+1)<<"\t"<<spec1d->GetBinContent(i+1)<<"\t"<<deta<<"\t"<<dpt<<endl;
     spec1d->SetBinContent(i+1,spec1d->GetBinContent(i+1)/deta/dpt);
     spec1d->SetBinError(i+1,spec1d->GetBinError(i+1)/deta/dpt);
