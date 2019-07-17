@@ -618,7 +618,7 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx[i][j]->Write("qdifx");
       runqdify[i][j]->Write("qdify");
       runqdifcnt[i][j]->Write("qdifcnt");
-      //CreatePlots(i,j);
+      CreatePlots(i,j);
     }
     subdirs[i]->cd();
     hvnpt_pos_eta[i]->Write("vnpt_pos_eta");
@@ -685,7 +685,7 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx_p[i][j]->Write("qdifx");
       runqdify_p[i][j]->Write("qdify");
       runqdifcnt_p[i][j]->Write("qdifcnt");
-      //CreatePlots(i,j,"_p");
+      CreatePlots(i,j,"_p");
     }
     subdirs_p[i]->cd();
     hvnpt_pos_eta_p[i]->Write("vnpt_pos_eta_p");
@@ -752,7 +752,7 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx_m[i][j]->Write("qdifx");
       runqdify_m[i][j]->Write("qdify");
       runqdifcnt_m[i][j]->Write("qdifcnt");
-      //CreatePlots(i,j,"_m");
+      CreatePlots(i,j,"_m");
     }
     subdirs_m[i]->cd();
     hvnpt_pos_eta_m[i]->Write("vnpt_pos_eta_m");
