@@ -14,16 +14,18 @@
 #include "TPaveText.h"
 #include "TSystem.h"
 #include "Framework.h"
-#include "../CMSSW_10_3_2/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
+#include "../CMSSW_10_3_3_patch1/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 using namespace std;
-static const int maxFiles = 50;
+static const int maxFiles = 5;
 static volatile int keepRunning = 1;
 void intHandler(int dummy){
   keepRunning = 0;
 }
 TFile * tf=NULL;
 static const int nptbins = 15;
+static const int nhistbins = 100;
+static const double maxvn = 0.6;
 static const float ptbinsMin[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0, 2.5,  3.0,  3.5, 0.3, 0.6, 1.0};
 static const float ptbinsMax[]={0.4, 0.5, 0.6,  0.8,  1.0, 1.25,  1.50,   2.0,  2.5, 3.0,  3.5,  4.0, 3.0, 3.0, 3.0};
 static const int ncentbins = 13;
@@ -52,9 +54,9 @@ TH2D * hangcorrHFpA_m[ncentbins][nptbins];
 TH2D * hangcorrHFpB[ncentbins][nptbins];
 TH2D * hangcorrHFpB_p[ncentbins][nptbins];
 TH2D * hangcorrHFpB_m[ncentbins][nptbins];
-TH1D * hvn[ncentbins][nptbins];
-TH1D * hvn_p[ncentbins][nptbins];
-TH1D * hvn_m[ncentbins][nptbins];
+TH1D * hvn[ncentbins][nptbins]={0};
+TH1D * hvn_p[ncentbins][nptbins]={0};
+TH1D * hvn_m[ncentbins][nptbins]={0};
 TH1D * diffX[ncentbins][nptbins];
 TH1D * diffX_p[ncentbins][nptbins];
 TH1D * diffX_m[ncentbins][nptbins];
@@ -110,7 +112,7 @@ void checkXY(string inlist="filelist.dat"){
   unsigned int runno_;
   TTree * tr;
   //  system(Form("cat %s",inlist.data()));
-  frame = new Framework(inlist);
+  frame = new Framework(inlist,true, nhistbins, maxvn);
   frame->SetMinMult(2);
   frame->SetRuns(nruns,runlist);
   if(!frame->LoadOffsets("checkXY_offsets.root")) {
@@ -135,65 +137,75 @@ void checkXY(string inlist="filelist.dat"){
       centloc[iloc++]=i;
 
       hDiff[i][j] = new TH2D(Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
+			     Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,-1,1,nhistbins,-1,1);
       hDiff[i][j]->SetDirectory(0);
+      hDiff[i][j]->Sumw2();
       hDiff[i][j]->SetOption("colz");
       hDiff[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       hDiff[i][j]->SetYTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
       hDiff_p[i][j] = new TH2D(Form("diff_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("diff_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
+			     Form("diff_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,-1,1,nhistbins,-1,1);
       hDiff_p[i][j]->SetDirectory(0);
+      hDiff_p[i][j]->Sumw2();
       hDiff_p[i][j]->SetOption("colz");
       hDiff_p[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       hDiff_p[i][j]->SetYTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
       hDiff_m[i][j] = new TH2D(Form("diff_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("diff_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-1,1,200,-1,1);
+			     Form("diff_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,-1,1,nhistbins,-1,1);
       hDiff_m[i][j]->SetDirectory(0);
+      hDiff_m[i][j]->Sumw2();
       hDiff_m[i][j]->SetOption("colz");
       hDiff_m[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       hDiff_m[i][j]->SetYTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
 
       hResp[i][j] = new TH2D(Form("resp_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("resp_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1.0,100,0,1.0);
+			     Form("resp_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hResp[i][j]->SetDirectory(0);
+      hResp[i][j]->Sumw2();
       hResp[i][j]->SetOption("colz");
       hResp[i][j]->SetXTitle(Form("v_{%d}^{obs}",Order));
       hResp[i][j]->SetYTitle(Form("v_{%d}^{obs}",Order));
       hResp_p[i][j] = new TH2D(Form("resp_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("resp_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1.0,100,0,1.0);
+			     Form("resp_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hResp_p[i][j]->SetDirectory(0);
+      hResp_p[i][j]->Sumw2();
       hResp_p[i][j]->SetOption("colz");
       hResp_p[i][j]->SetXTitle(Form("v_{%d}^{obs}",Order));
       hResp_p[i][j]->SetYTitle(Form("v_{%d}^{obs}",Order));
       hResp_m[i][j] = new TH2D(Form("resp_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			     Form("resp_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1.0,100,0,1.0);
+			     Form("resp_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hResp_m[i][j]->SetDirectory(0);
+      hResp_m[i][j]->Sumw2();
       hResp_m[i][j]->SetOption("colz");
       hResp_m[i][j]->SetXTitle(Form("v_{%d}^{obs}",Order));
       hResp_m[i][j]->SetYTitle(Form("v_{%d}^{obs}",Order));
 
-      hvn[i][j] = new TH1D(Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			   Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
-      hvn[i][j]->SetDirectory(0);
-      hvn[i][j]->SetOption("colz");
-      hvn[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
-      hvn[i][j]->SetYTitle("Counts");
-      hvn_p[i][j] = new TH1D(Form("hvn_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			   Form("hvn_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
-      hvn_p[i][j]->SetDirectory(0);
-      hvn_p[i][j]->SetOption("colz");
-      hvn_p[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
-      hvn_p[i][j]->SetYTitle("Counts");
-      hvn_m[i][j] = new TH1D(Form("hvn_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			   Form("hvn_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1);
-      hvn_m[i][j]->SetDirectory(0);
-      hvn_m[i][j]->SetOption("colz");
-      hvn_m[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
-      hvn_m[i][j]->SetYTitle("Counts");
+      // hvn[i][j] = new TH1D(Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+      // 			   Form("hvn_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn);
+      // hvn[i][j]->SetDirectory(0);
+      // hvn[i][j]->Sumw2();
+      // hvn[i][j]->SetOption("colz");
+      // hvn[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
+      // hvn[i][j]->SetYTitle("Counts");
+      // hvn_p[i][j] = new TH1D(Form("hvn_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+      // 			   Form("hvn_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn);
+      // hvn_p[i][j]->SetDirectory(0);
+      // hvn_p[i][j]->Sumw2();
+      // hvn_p[i][j]->SetOption("colz");
+      // hvn_p[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
+      // hvn_p[i][j]->SetYTitle("Counts");
+      // hvn_m[i][j] = new TH1D(Form("hvn_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+      // 			   Form("hvn_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn);
+      // hvn_m[i][j]->SetDirectory(0);
+      // hvn_m[i][j]->Sumw2();
+      // hvn_m[i][j]->SetOption("colz");
+      // hvn_m[i][j]->SetXTitle(Form("(v_{%d}^{a}+v_{%d}^{b})/2",Order,Order));
+      // hvn_m[i][j]->SetYTitle("Counts");
 
       hvnpt_pos_eta[i] = new TH1D(Form("hvnpt_pos_eta_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_pos_eta_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_pos_eta[i]->SetDirectory(0);
+      hvnpt_pos_eta[i]->Sumw2();
       hvnpt_pos_eta[i]->SetOption("colz");
       hvnpt_pos_eta[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_pos_eta[i]->SetYTitle(Form("v_{%d} (+#eta)",Order));
@@ -201,6 +213,7 @@ void checkXY(string inlist="filelist.dat"){
       hvnpt_pos_eta_p[i] = new TH1D(Form("hvnpt_pos_eta_p_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_pos_eta_p_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_pos_eta_p[i]->SetDirectory(0);
+      hvnpt_pos_eta_p[i]->Sumw2();
       hvnpt_pos_eta_p[i]->SetOption("colz");
       hvnpt_pos_eta_p[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_pos_eta_p[i]->SetYTitle(Form("v_{%d} (+#eta)",Order));
@@ -208,6 +221,7 @@ void checkXY(string inlist="filelist.dat"){
       hvnpt_pos_eta_m[i] = new TH1D(Form("hvnpt_pos_eta_m_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_pos_eta_m_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_pos_eta_m[i]->SetDirectory(0);
+      hvnpt_pos_eta_m[i]->Sumw2();
       hvnpt_pos_eta_m[i]->SetOption("colz");
       hvnpt_pos_eta_m[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_pos_eta_m[i]->SetYTitle(Form("v_{%d} (+#eta)",Order));
@@ -215,6 +229,7 @@ void checkXY(string inlist="filelist.dat"){
       hvnpt_neg_eta[i] = new TH1D(Form("hvnpt_neg_eta_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_neg_eta_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_neg_eta[i]->SetDirectory(0);
+      hvnpt_neg_eta[i]->Sumw2();
       hvnpt_neg_eta[i]->SetOption("colz");
       hvnpt_neg_eta[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_neg_eta[i]->SetYTitle(Form("v_{%d} (-#eta)",Order));
@@ -222,6 +237,7 @@ void checkXY(string inlist="filelist.dat"){
       hvnpt_neg_eta_p[i] = new TH1D(Form("hvnpt_neg_eta_p_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_neg_eta_p_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_neg_eta_p[i]->SetDirectory(0);
+      hvnpt_neg_eta_p[i]->Sumw2();
       hvnpt_neg_eta_p[i]->SetOption("colz");
       hvnpt_neg_eta_p[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_neg_eta_p[i]->SetYTitle(Form("v_{%d} (-#eta)",Order));
@@ -229,47 +245,54 @@ void checkXY(string inlist="filelist.dat"){
       hvnpt_neg_eta_m[i] = new TH1D(Form("hvnpt_neg_eta_m_%d_%d",centbins[i],centbins[i+1]),
 			   Form("hvnpt_neg_eta_m_%d_%d",centbins[i],centbins[i+1]),500,0,5);
       hvnpt_neg_eta_m[i]->SetDirectory(0);
+      hvnpt_neg_eta_m[i]->Sumw2();
       hvnpt_neg_eta_m[i]->SetOption("colz");
       hvnpt_neg_eta_m[i]->SetXTitle("p_{T} (GeV/c)");
       hvnpt_neg_eta_m[i]->SetYTitle(Form("v_{%d} (-#eta)",Order));
 
       hvncorr[i][j] = new TH2D(Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			       Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
+			       Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hvncorr[i][j]->SetDirectory(0);
+      hvncorr[i][j]->Sumw2();
       hvncorr[i][j]->SetOption("colz");
       hvncorr[i][j]->SetXTitle("v_{2}^{a +}");
       hvncorr[i][j]->SetYTitle("v_{2}^{b -}");
       hvncorr_p[i][j] = new TH2D(Form("hvncorr_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			       Form("hvncorr_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
+			       Form("hvncorr_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hvncorr_p[i][j]->SetDirectory(0);
+      hvncorr_p[i][j]->Sumw2();
       hvncorr_p[i][j]->SetOption("colz");
       hvncorr_p[i][j]->SetXTitle("v_{2}^{a +}");
       hvncorr_p[i][j]->SetYTitle("v_{2}^{b -}");
       hvncorr_m[i][j] = new TH2D(Form("hvncorr_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-			       Form("hvncorr_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),100,0,1,100,0,1);
+			       Form("hvncorr_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,0,maxvn,nhistbins,0,maxvn);
       hvncorr_m[i][j]->SetDirectory(0);
+      hvncorr_m[i][j]->Sumw2();
       hvncorr_m[i][j]->SetOption("colz");
       hvncorr_m[i][j]->SetXTitle("v_{2}^{a +}");
       hvncorr_m[i][j]->SetYTitle("v_{2}^{b -}");
 
       hangcorr[i][j] = new TH2D(Form("hangcorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorr[i][j]->SetDirectory(0);
+      hangcorr[i][j]->Sumw2();
       hangcorr[i][j]->SetOption("colz");
       hangcorr[i][j]->SetXTitle("#Psi^{b -}");
       hangcorr[i][j]->SetYTitle("#Psi^{a +}");
       hangcorr_p[i][j] = new TH2D(Form("hangcorr_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorr_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorr_p[i][j]->SetDirectory(0);
+      hangcorr_p[i][j]->Sumw2();
       hangcorr_p[i][j]->SetOption("colz");
       hangcorr_p[i][j]->SetXTitle("#Psi^{b -}");
       hangcorr_p[i][j]->SetYTitle("#Psi^{a +}");
       hangcorr_m[i][j] = new TH2D(Form("hangcorr_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorr_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorr_m[i][j]->SetDirectory(0);
+      hangcorr_m[i][j]->Sumw2();
       hangcorr_m[i][j]->SetOption("colz");
       hangcorr_m[i][j]->SetXTitle("#Psi^{b -}");
       hangcorr_m[i][j]->SetYTitle("#Psi^{a +}");
@@ -277,44 +300,50 @@ void checkXY(string inlist="filelist.dat"){
 
       hangcorrHFpA[i][j] = new TH2D(Form("hangcorrHFpA_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpA_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpA[i][j]->SetDirectory(0);
+      hangcorrHFpA[i][j]->Sumw2();
       hangcorrHFpA[i][j]->SetOption("colz");
       hangcorrHFpA[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpA[i][j]->SetYTitle("#Psi^{a +}");
       hangcorrHFpA_p[i][j] = new TH2D(Form("hangcorrHFpA_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpA_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpA_p[i][j]->SetDirectory(0);
+      hangcorrHFpA_p[i][j]->Sumw2();
       hangcorrHFpA_p[i][j]->SetOption("colz");
       hangcorrHFpA_p[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpA_p[i][j]->SetYTitle("#Psi^{a +}");
       hangcorrHFpA_m[i][j] = new TH2D(Form("hangcorrHFpA_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpA_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpA_m[i][j]->SetDirectory(0);
+      hangcorrHFpA_m[i][j]->Sumw2();
       hangcorrHFpA_m[i][j]->SetOption("colz");
       hangcorrHFpA_m[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpA_m[i][j]->SetYTitle("#Psi^{a +}");
 
       hangcorrHFpB[i][j] = new TH2D(Form("hangcorrHFpB_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpB_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpB[i][j]->SetDirectory(0);
+      hangcorrHFpB[i][j]->Sumw2();
       hangcorrHFpB[i][j]->SetOption("colz");
       hangcorrHFpB[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpB[i][j]->SetYTitle("#Psi^{b -}");
       hangcorrHFpB_p[i][j] = new TH2D(Form("hangcorrHFpB_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpB_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpB_p[i][j]->SetDirectory(0);
+      hangcorrHFpB_p[i][j]->Sumw2();
       hangcorrHFpB_p[i][j]->SetOption("colz");
       hangcorrHFpB_p[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpB_p[i][j]->SetYTitle("#Psi^{b -}");
       hangcorrHFpB_m[i][j] = new TH2D(Form("hangcorrHFpB_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			       Form("hangcorrHFpB_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
-				100,-2,2,100,-2,2);
+				nhistbins,-2,2,nhistbins,-2,2);
       hangcorrHFpB_m[i][j]->SetDirectory(0);
+      hangcorrHFpB_m[i][j]->Sumw2();
       hangcorrHFpB_m[i][j]->SetOption("colz");
       hangcorrHFpB_m[i][j]->SetXTitle("#Psi^{HF+}");
       hangcorrHFpB_m[i][j]->SetYTitle("#Psi^{b -}");
@@ -323,18 +352,21 @@ void checkXY(string inlist="filelist.dat"){
       diffX[i][j] = new TH1D(Form("diffX_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffX_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffX[i][j]->SetDirectory(0);
+      diffX[i][j]->Sumw2();
       diffX[i][j]->SetOption("colz");
       diffX[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       diffX[i][j]->SetYTitle("Counts");
       diffX_p[i][j] = new TH1D(Form("diffX_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffX_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffX_p[i][j]->SetDirectory(0);
+      diffX_p[i][j]->Sumw2();
       diffX_p[i][j]->SetOption("colz");
       diffX_p[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       diffX_p[i][j]->SetYTitle("Counts");
       diffX_m[i][j] = new TH1D(Form("diffX_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffX_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffX_m[i][j]->SetDirectory(0);
+      diffX_m[i][j]->Sumw2();
       diffX_m[i][j]->SetOption("colz");
       diffX_m[i][j]->SetXTitle(Form("(v_{%d,x}^{obs,a}-v_{%d,x}^{obs,b})/2",Order,Order));
       diffX_m[i][j]->SetYTitle("Counts");
@@ -342,18 +374,21 @@ void checkXY(string inlist="filelist.dat"){
       diffY[i][j] = new TH1D(Form("diffY_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffY_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffY[i][j]->SetDirectory(0);
+      diffY[i][j]->Sumw2();
       diffY[i][j]->SetOption("colz");
       diffY[i][j]->SetXTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
       diffY[i][j]->SetYTitle("Counts");
       diffY_p[i][j] = new TH1D(Form("diffY_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffY_p_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffY_p[i][j]->SetDirectory(0);
+      diffY_p[i][j]->Sumw2();
       diffY_p[i][j]->SetOption("colz");
       diffY_p[i][j]->SetXTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
       diffY_p[i][j]->SetYTitle("Counts");
       diffY_m[i][j] = new TH1D(Form("diffY_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			      Form("diffY_m_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),400,-1.0,1.0);
       diffY_m[i][j]->SetDirectory(0);
+      diffY_m[i][j]->Sumw2();
       diffY_m[i][j]->SetOption("colz");
       diffY_m[i][j]->SetXTitle(Form("(v_{%d,y}^{obs,a}-v_{%d,y}^{obs,b})/2",Order,Order));
       diffY_m[i][j]->SetYTitle("Counts");
@@ -448,7 +483,7 @@ void checkXY(string inlist="filelist.dat"){
 	double vnp = sqrt(pow(vnxp,2)+pow(vnyp,2));
 	double vnm = sqrt(pow(vnxm,2)+pow(vnym,2));
 	if(vnp>-2 && vnm>-2) {
-	  hvn[k][j]->Fill(vn);
+	  //hvn[k][j]->Fill(vn);
 	  hvncorr[k][j]->Fill(vnm,vnp);
 	  hangcorr[k][j]->Fill(frame->GetAng(mapm[k][j]),frame->GetAng(mapp[k][j]));
 	  hangcorrHFpA[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapp[k][j]));
@@ -472,7 +507,7 @@ void checkXY(string inlist="filelist.dat"){
 	double vnp_p = sqrt(pow(vnxp_p,2)+pow(vnyp_p,2));
 	double vnm_p = sqrt(pow(vnxm_p,2)+pow(vnym_p,2));
 	if(vnp_p>-2 && vnm_p>-2) {
-	  hvn_p[k][j]->Fill(vn_p);
+	  //hvn_p[k][j]->Fill(vn_p);
 	  hvncorr_p[k][j]->Fill(vnm_p,vnp_p);
 	  hangcorr_p[k][j]->Fill(frame->GetAng_p(mapm[k][j]),frame->GetAng_p(mapp[k][j]));
 	  hangcorrHFpA_p[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng_p(mapp[k][j]));
@@ -496,7 +531,7 @@ void checkXY(string inlist="filelist.dat"){
 	double vnp_m = sqrt(pow(vnxp_m,2)+pow(vnyp_m,2));
 	double vnm_m = sqrt(pow(vnxm_m,2)+pow(vnym_m,2));
 	if(vnp_p>-2 && vnm_p>-2) {
-	  hvn_m[k][j]->Fill(vn_m);
+	  //hvn_m[k][j]->Fill(vn_m);
 	  hvncorr_m[k][j]->Fill(vnm_m,vnp_m);
 	  hangcorr_m[k][j]->Fill(frame->GetAng_m(mapm[k][j]),frame->GetAng_m(mapp[k][j]));
 	  hangcorrHFpA_m[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng_m(mapp[k][j]));
@@ -519,7 +554,7 @@ void checkXY(string inlist="filelist.dat"){
     }
     ++count;
     ++partcount;
-    if(partcount == 100000) {
+    if(partcount == 10000) {
       cout<<count<<endl;
       partcount = 0;
     }
@@ -549,6 +584,11 @@ void checkXY(string inlist="filelist.dat"){
     ((TH1D *)frame->GetMult(i))->Write(Form("mult%s",frame->GetSide(i).data()));
     int cb = centloc[i];
     int pb = ptloc[i];
+    if(hvn[cb][pb]==0) {
+      hvn[cb][pb] = frame->Get1d(i);
+    } else {
+      hvn[cb][pb]->Add(frame->Get1d(i));
+    }
     if(pb < 12) {
       double ptav = frame->GetAvPt(i);
       double vnv = frame->GetVn(i);
@@ -563,7 +603,6 @@ void checkXY(string inlist="filelist.dat"){
       }
     }
   }
-  
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j]->cd();
@@ -579,7 +618,7 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx[i][j]->Write("qdifx");
       runqdify[i][j]->Write("qdify");
       runqdifcnt[i][j]->Write("qdifcnt");
-      CreatePlots(i,j);
+      //CreatePlots(i,j);
     }
     subdirs[i]->cd();
     hvnpt_pos_eta[i]->Write("vnpt_pos_eta");
@@ -610,6 +649,11 @@ void checkXY(string inlist="filelist.dat"){
     ((TH1D *)frame->GetMult_p(i))->Write(Form("mult%s",frame->GetSide(i).data()));
     int cb = centloc[i];
     int pb = ptloc[i];
+     if(hvn_p[cb][pb]==0) {
+      hvn_p[cb][pb] = frame->Get1d_p(i);
+    } else {
+      hvn_p[cb][pb]->Add(frame->Get1d_p(i));
+    }
     if(pb < 12) {
       double ptav_p = frame->GetAvPt_p(i);
       double vnv_p = frame->GetVn_p(i);
@@ -641,7 +685,7 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx_p[i][j]->Write("qdifx");
       runqdify_p[i][j]->Write("qdify");
       runqdifcnt_p[i][j]->Write("qdifcnt");
-      CreatePlots(i,j,"_p");
+      //CreatePlots(i,j,"_p");
     }
     subdirs_p[i]->cd();
     hvnpt_pos_eta_p[i]->Write("vnpt_pos_eta_p");
@@ -672,6 +716,11 @@ void checkXY(string inlist="filelist.dat"){
     ((TH1D *)frame->GetMult_m(i))->Write(Form("mult%s",frame->GetSide(i).data()));
     int cb = centloc[i];
     int pb = ptloc[i];
+     if(hvn_m[cb][pb]==0) {
+      hvn_m[cb][pb] = frame->Get1d_m(i);
+    } else {
+      hvn_m[cb][pb]->Add(frame->Get1d_m(i));
+    }
     if(pb < 12) {
       double ptav_m = frame->GetAvPt_m(i);
       double vnv_m = frame->GetVn_m(i);
@@ -703,11 +752,11 @@ void checkXY(string inlist="filelist.dat"){
       runqdifx_m[i][j]->Write("qdifx");
       runqdify_m[i][j]->Write("qdify");
       runqdifcnt_m[i][j]->Write("qdifcnt");
-      CreatePlots(i,j,"_m");
+      //CreatePlots(i,j,"_m");
     }
     subdirs_m[i]->cd();
-    hvnpt_pos_eta_p[i]->Write("vnpt_pos_eta_p");
     hvnpt_pos_eta_m[i]->Write("vnpt_pos_eta_m");
+    hvnpt_neg_eta_m[i]->Write("vnpt_neg_eta_m");
   }
   fout_m->cd();
 
