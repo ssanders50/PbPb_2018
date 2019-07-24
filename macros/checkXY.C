@@ -33,6 +33,8 @@ static const float ptbinsMin[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  
 static const float ptbinsMax[]={0.4, 0.5, 0.6,  0.8,  1.0, 1.25,  1.50,   2.0,  2.5, 3.0,  3.5,  4.0, 3.0, 3.0, 3.0};
 static const int ncentbins = 13;
 static const int centbins[]={0,5,10,15,20,25,30,35,40,50,60,70,80,100};
+float sub1[2] = {-1.2,0};
+float sub2[2] = {0,1.2};
 static const int Order = 2;
 FILE * flist;
 TH1I * runs;
@@ -49,15 +51,16 @@ TH1D * diffY[ncentbins][nptbins];
 TH1D * runqdifx[ncentbins][nptbins];
 TH1D * runqdify[ncentbins][nptbins];
 TH1D * runqdifcnt[ncentbins][nptbins];
-TH1D * hvnpt_pos_eta[ncentbins];
-TH1D * hvnpt_neg_eta[ncentbins];
+TH1D * hvnpt_sub1[ncentbins];
+TH1D * hvnpt_sub2[ncentbins];
+TH1D * hvnpt_full[ncentbins];
+TH1D * hCent[ncentbins][nptbins];
+TH1D * hVtx[ncentbins][nptbins];
 TH1I * hruns;
 double runlist[500];
 int nruns = 0;
-int ROIp[ncentbins][nptbins];
-int ROIm[ncentbins][nptbins];
-int mapp[ncentbins][nptbins];
-int mapm[ncentbins][nptbins];
+int ROI[ncentbins][nptbins];
+int maproi[ncentbins][nptbins];
 int centloc[500];
 int ptloc[500];
 Framework * frame;
@@ -65,8 +68,12 @@ Framework * frame;
 void CreatePlots(int icent, int ipt, string suffix = "");
 
 void checkXY(string inlist="filelist.dat",int cs = 0){
+  cout<<"==========================================="<<endl;
+  cout<<"Kill detached process with: kill -2 [id]"<<endl;
+  cout<<"==========================================="<<endl;
   CS = cs;
   std::clock_t start = 0;
+  std::clock_t last = 0;
   char buf[120];
   TFile * frun = new TFile("runs.root","read");
   runs = (TH1I *) frun->Get("runs");
@@ -104,16 +111,28 @@ void checkXY(string inlist="filelist.dat",int cs = 0){
   int iloc = 0;
   for(int i = 0; i<ncentbins; i++) {
     for(int j = 0; j<nptbins; j++) {
-      ROIp[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],0.0, 1.2, ptbinsMin[j], ptbinsMax[j]);
-      frame->SetROIEP(ROIp[i][j],HFm2,HFp2,trackmid2);
-      mapp[i][j]=iloc;
+      ROI[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],sub1,sub2, ptbinsMin[j], ptbinsMax[j]);
+      frame->SetROIEP(ROI[i][j],HFm2,HFp2,trackmid2);
+      maproi[i][j]=iloc;
       ptloc[iloc] = j;
       centloc[iloc++]=i;
-      ROIm[i][j]=frame->SetROIRange(Order,centbins[i],centbins[i+1],-1.2, 0.0, ptbinsMin[j], ptbinsMax[j]);
-      frame->SetROIEP(ROIm[i][j],HFp2,HFm2,trackmid2);
-      mapm[i][j]=iloc;
-      ptloc[iloc] = j;
-      centloc[iloc++]=i;
+
+      hCent[i][j] = new TH1D(Form("cent_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("cent_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,0,100);
+      hCent[i][j]->SetDirectory(0);
+      hCent[i][j]->Sumw2();
+      hCent[i][j]->SetOption("colz");
+      hCent[i][j]->SetXTitle("Centrality");
+      hCent[i][j]->SetYTitle("Count");
+
+      hVtx[i][j] = new TH1D(Form("vtx_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
+			     Form("vtx_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),200,-25,25);
+      hVtx[i][j]->SetDirectory(0);
+      hVtx[i][j]->Sumw2();
+      hVtx[i][j]->SetOption("colz");
+      hVtx[i][j]->SetXTitle("Vertex");
+      hVtx[i][j]->SetYTitle("Count");
+
 
       hDiff[i][j] = new TH2D(Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
 			     Form("diff_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),nhistbins,-1,1,nhistbins,-1,1);
@@ -132,22 +151,30 @@ void checkXY(string inlist="filelist.dat",int cs = 0){
       hResp[i][j]->SetXTitle(Form("v_{%d}^{obs}",Order));
       hResp[i][j]->SetYTitle(Form("v_{%d}^{obs}",Order));
 
-      hvnpt_pos_eta[i] = new TH1D(Form("hvnpt_pos_eta_%d_%d",centbins[i],centbins[i+1]),
-			   Form("hvnpt_pos_eta_%d_%d",centbins[i],centbins[i+1]),500,0,5);
-      hvnpt_pos_eta[i]->SetDirectory(0);
-      hvnpt_pos_eta[i]->Sumw2();
-      hvnpt_pos_eta[i]->SetOption("colz");
-      hvnpt_pos_eta[i]->SetXTitle("p_{T} (GeV/c)");
-      hvnpt_pos_eta[i]->SetYTitle(Form("v_{%d} (+#eta)",Order));
+      hvnpt_sub1[i] = new TH1D(Form("hvnpt_sub1_%d_%d",centbins[i],centbins[i+1]),
+			   Form("hvnpt_sub1_%d_%d",centbins[i],centbins[i+1]),500,0,5);
+      hvnpt_sub1[i]->SetDirectory(0);
+      hvnpt_sub1[i]->Sumw2();
+      hvnpt_sub1[i]->SetOption("colz");
+      hvnpt_sub1[i]->SetXTitle("p_{T} (GeV/c)");
+      hvnpt_sub1[i]->SetYTitle(Form("v_{%d} (%03.1f#le #eta < %03.1f)",Order,sub1[0],sub1[1]));
 
 
-      hvnpt_neg_eta[i] = new TH1D(Form("hvnpt_neg_eta_%d_%d",centbins[i],centbins[i+1]),
-			   Form("hvnpt_neg_eta_%d_%d",centbins[i],centbins[i+1]),500,0,5);
-      hvnpt_neg_eta[i]->SetDirectory(0);
-      hvnpt_neg_eta[i]->Sumw2();
-      hvnpt_neg_eta[i]->SetOption("colz");
-      hvnpt_neg_eta[i]->SetXTitle("p_{T} (GeV/c)");
-      hvnpt_neg_eta[i]->SetYTitle(Form("v_{%d} (-#eta)",Order));
+      hvnpt_sub2[i] = new TH1D(Form("hvnpt_sub2_%d_%d",centbins[i],centbins[i+1]),
+			   Form("hvnpt_sub2_%d_%d",centbins[i],centbins[i+1]),500,0,5);
+      hvnpt_sub2[i]->SetDirectory(0);
+      hvnpt_sub2[i]->Sumw2();
+      hvnpt_sub2[i]->SetOption("colz");
+      hvnpt_sub2[i]->SetXTitle("p_{T} (GeV/c)");
+      hvnpt_sub2[i]->SetYTitle(Form("v_{%d} (%03.1f#le #eta < %03.1f)",Order,sub2[0],sub2[1]));
+
+      hvnpt_full[i] = new TH1D(Form("hvnpt_full_%d_%d",centbins[i],centbins[i+1]),
+			   Form("hvnpt_full_%d_%d",centbins[i],centbins[i+1]),500,0,5);
+      hvnpt_full[i]->SetDirectory(0);
+      hvnpt_full[i]->Sumw2();
+      hvnpt_full[i]->SetOption("colz");
+      hvnpt_full[i]->SetXTitle("p_{T} (GeV/c)");
+      hvnpt_full[i]->SetYTitle(Form("v_{%d}",Order));
 
 
       hvncorr[i][j] = new TH2D(Form("hvncorr_%d_%d_%04.2f_%04.2f",centbins[i],centbins[i+1],ptbinsMin[j],ptbinsMax[j]),
@@ -231,59 +258,64 @@ void checkXY(string inlist="filelist.dat",int cs = 0){
     frame->AddEvent(i);
     for(int k = 0; k<ncentbins; k++) {
       for(int j = 0; j<nptbins; j++) {
-	if(frame->GetVnxEvt(mapp[k][j])<-1) continue;
-	if(frame->GetVnxEvt(mapm[k][j])<-1) continue;
-	if(frame->GetVnyEvt(mapp[k][j])<-1) continue;
-	if(frame->GetVnyEvt(mapm[k][j])<-1) continue;
-	double xdiffoff = frame->GetXdiff(mapp[k][j],runno);
-	double ydiffoff = frame->GetYdiff(mapp[k][j],runno);
-
-	double vnxp = frame->GetVnxEvt(mapp[k][j]);
-	double vnxm = frame->GetVnxEvt(mapm[k][j]);
-	double vnx = (vnxp+vnxm)/2.;
-
-	double vnyp = frame->GetVnyEvt(mapp[k][j]);
-	double vnym = frame->GetVnyEvt(mapm[k][j]);
-	double vny = (vnyp+vnym)/2.;
-
-	double vn = sqrt(pow(vnx,2)+pow(vny,2));
-	double vnp = sqrt(pow(vnxp,2)+pow(vnyp,2));
-	double vnm = sqrt(pow(vnxm,2)+pow(vnym,2));
-	if(vnp>-2 && vnm>-2) {
-	  hvncorr[k][j]->Fill(vnm,vnp);
-	  hangcorr[k][j]->Fill(frame->GetAng(mapm[k][j]),frame->GetAng(mapp[k][j]));
-	  hangcorrHFpA[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapp[k][j]));
-	  hangcorrHFpB[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapm[k][j]));
-	  double xdiff = (vnxp-vnxm)/2. - xdiffoff;
-	  double ydiff = (vnyp-vnym)/2. - ydiffoff;
-	  hDiff[k][j]->Fill(xdiff,ydiff); 
-	  double vnobsx = 0;
-	  double vnobsy = 0;
-	  double vnobs = 0;
-	  frame->Smear(mapp[k][j],vnx,vny,vnobsx,vnobsy,vnobs);
-	  diffX[k][j]->Fill(xdiff,vnobs);
-	  diffY[k][j]->Fill(ydiff,vnobs);
-	  hResp[k][j]->Fill(vnobs,vn);
-	  runqdifx[k][j]->Fill(runno,xdiff);
-	  runqdify[k][j]->Fill(runno,ydiff);
-	  runqdifcnt[k][j]->Fill(runno);
+	if(frame->GetVnxEvt_sub1(maproi[k][j])<-1.) continue;
+	if(frame->GetVnxEvt_sub2(maproi[k][j])<-1.) continue;
+	if(frame->GetVnyEvt_sub1(maproi[k][j])<-1.) continue;
+	if(frame->GetVnyEvt_sub2(maproi[k][j])<-1.) continue;
+	double xdiffoff_sub1 = frame->GetXdiff_sub1(maproi[k][j],runno);
+	double ydiffoff_sub1 = frame->GetYdiff_sub2(maproi[k][j],runno);
+	
+	double vnx_sub1 = frame->GetVnxEvt_sub1(maproi[k][j]);
+	double vnx_sub2 = frame->GetVnxEvt_sub2(maproi[k][j]);
+	double vnx_full =  frame->GetVnxEvt_full(maproi[k][j]);
+	
+	double vny_sub1 = frame->GetVnyEvt_sub1(maproi[k][j]);
+	double vny_sub2 = frame->GetVnyEvt_sub2(maproi[k][j]);
+	double vny_full =  frame->GetVnyEvt_full(maproi[k][j]);
+	
+	double vn_sub1 = sqrt(pow(vnx_sub1,2)+pow(vny_sub1,2));
+	double vn_sub2 = sqrt(pow(vnx_sub2,2)+pow(vny_sub2,2));
+	double vn_full = sqrt(pow(vnx_full,2)+pow(vny_full,2));
+	if(vn_sub1>-2 && vn_sub2>-2) {
+	  hvncorr[k][j]->Fill(vn_sub1,vn_sub2);
+	  hangcorr[k][j]->Fill(frame->GetAng_sub1(maproi[k][j]),frame->GetAng_sub2(maproi[k][j]));
+	  // 	  hangcorrHFpA[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapp[k][j]));
+	  // 	  hangcorrHFpB[k][j]->Fill(frame->GetAngHFp(mapp[k][j]),frame->GetAng(mapm[k][j]));
+	// 	  double xdiff = (vnxp-vnxm)/2. - xdiffoff;
+	// 	  double ydiff = (vnyp-vnym)/2. - ydiffoff;
+	// 	  hDiff[k][j]->Fill(xdiff,ydiff); 
+	// 	  double vnobsx = 0;
+	// 	  double vnobsy = 0;
+	// 	  double vnobs = 0;
+	// 	  frame->Smear(mapp[k][j],vnx,vny,vnobsx,vnobsy,vnobs);
+	// 	  diffX[k][j]->Fill(xdiff,vnobs);
+	// 	  diffY[k][j]->Fill(ydiff,vnobs);
+	// 	  hResp[k][j]->Fill(vnobs,vn);
+	// 	  runqdifx[k][j]->Fill(runno,xdiff);
+	// 	  runqdify[k][j]->Fill(runno,ydiff);
+	// 	  runqdifcnt[k][j]->Fill(runno);
+	  hCent[k][j]->Fill(frame->GetCent(maproi[k][j]));
+	  hVtx[k][j]->Fill(frame->GetVtx(maproi[k][j]));
 	}
 	
       }
     }
     ++count;
     ++partcount;
-    if(partcount == 10000) {
-      double duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    if(partcount == 100000) {
+      std::clock_t now = std::clock();
+      double tpe = (now - last) / (double)CLOCKS_PER_SEC / 50.;
+      last = now;
+      double duration = (now - start) / (double)CLOCKS_PER_SEC;
       duration/=60.;
       double hr = duration/60.;
-      cout<<count<<"   elapsed time (min): "<<setw(15)<<setprecision(5)<<fixed<<duration<<setw(15)<<setprecision(5)<<fixed<<hr<<endl;
+      cout<<setw(10)<<count<<"   time per event (ms): "<<setw(15)<<setprecision(5)<<fixed<<tpe<<"   elapsed time (min/h): "<<setw(15)<<setprecision(5)<<fixed<<duration<<setw(15)<<setprecision(5)<<fixed<<hr<<endl;
       partcount = 0;
     }
     if(count>maxEvents) break;
   }
   if(nfiles++<maxFiles && keepRunning == 1 && frame->AddFile() && count<maxEvents) goto rep;
-  //////////////
+ //  //////////////
   TFile * fout = NULL;
   if(CS == 0) {
     fout = new TFile("checkXY.root","recreate");
@@ -298,7 +330,7 @@ void checkXY(string inlist="filelist.dat",int cs = 0){
   for(int i = 0; i<ncentbins; i++) {
     subdirs[i] = fout->mkdir(Form("%d_%d",centbins[i],centbins[i+1]));
     subdirs[i]->cd();
-    TH1D * sp = frame->GetSpectra(ROIp[0][i]);
+    TH1D * sp = frame->GetSpectra(ROI[0][i]);
     sp->Write();
     for(int j = 0; j<nptbins; j++) {
       subsubdirs[i][j] = subdirs[i]->mkdir(Form("%04.2f_%04.2f",ptbinsMin[j],ptbinsMax[j]));
@@ -306,120 +338,137 @@ void checkXY(string inlist="filelist.dat",int cs = 0){
   }
   for(int i = 0; i<frame->GetNrange(); i++) {
     subsubdirs[centloc[i]][ptloc[i]]->cd();
-    ((TH2D *)frame->Get2d(i))->Write(Form("vn2d%s",frame->GetSide(i).data()));
-    ((TH1D *)frame->Get1d(i))->Write(Form("vn1d%s",frame->GetSide(i).data()));
-    TH1D * tmp = (TH1D *) frame->Get1dMult(i);
-    tmp->Divide((TH1D *)frame->Get1d(i));
-    tmp->Write(Form("vn1dMult%s",frame->GetSide(i).data()));
-    ((TH1D *)frame->GetMult(i))->Write(Form("mult%s",frame->GetSide(i).data()));
-    int cb = centloc[i];
-    int pb = ptloc[i];
-    if(hvn[cb][pb]==0) {
-      hvn[cb][pb] = frame->Get1d(i);
-    } else {
-      hvn[cb][pb]->Add(frame->Get1d(i));
-    }
-    if(pb < 12) {
-      double ptav = frame->GetAvPt(i);
-      double vnv = frame->GetVn(i);
-      double vnve = frame->GetVnErr(i);
-      int bin = hvnpt_pos_eta[0]->FindBin(ptav);
-      if(frame->GetSide(i).find("pos_eta")!=std::string::npos) {
-	hvnpt_pos_eta[cb]->SetBinContent(bin,vnv);
-	hvnpt_pos_eta[cb]->SetBinError(bin,vnve);
-      } else if (frame->GetSide(i).find("neg_eta")!=std::string::npos){
-	hvnpt_neg_eta[cb]->SetBinContent(bin,vnv);
-	hvnpt_neg_eta[cb]->SetBinError(bin,vnve);
-      }
-    }
-  }
-  for(int i = 0; i<ncentbins; i++) {
-    for(int j = 0; j<nptbins; j++) {
-      subsubdirs[i][j]->cd();
-      hvn[i][j]->Write("vn");
-      hvncorr[i][j]->Write("vncorr");
-      hangcorr[i][j]->Write("angcorr");
-      hangcorrHFpA[i][j]->Write("angcorr_HFpA");
-      hangcorrHFpB[i][j]->Write("angcorr_HFpB");
-      hDiff[i][j]->Write("diff2d");
-      hResp[i][j]->Write("resp2d");
-      diffX[i][j]->Write("diffX");
-      diffY[i][j]->Write("diffY");
-      runqdifx[i][j]->Write("qdifx");
-      runqdify[i][j]->Write("qdify");
-      runqdifcnt[i][j]->Write("qdifcnt");
-      CreatePlots(i,j);
-    }
-    subdirs[i]->cd();
-    hvnpt_pos_eta[i]->Write("vnpt_pos_eta");
-    hvnpt_neg_eta[i]->Write("vnpt_neg_eta");
-  }
-  fout->cd();
+    ((TH2D *)frame->Get2d_sub1(i))->Write("vn2d_sub1");
+    ((TH1D *)frame->Get1d_sub1(i))->Write("vn1d_sub1");
+    ((TH2D *)frame->Get2d_sub2(i))->Write("vn2d_sub2");
+    ((TH1D *)frame->Get1d_sub2(i))->Write("vn1d_sub2");
+    ((TH2D *)frame->Get2d_full(i))->Write("vn2d_full");
+    ((TH1D *)frame->Get1d_full(i))->Write("vn1d_full");
+    TH1D * tmp = (TH1D *) frame->Get1dMult_sub1(i);
+    tmp->Divide((TH1D *)frame->Get1d_sub1(i));
+    tmp->Write("vn1dMult_sub1");
+    ((TH1D *)frame->GetMult_sub1(i))->Write("mult_sub1");
 
-  for(int i = 0; i<frame->GetNrange(); i++) {
-    frame->SaveFrameworkRuns(i,subsubdirs[centloc[i]][ptloc[i]]);
+    tmp = (TH1D *) frame->Get1dMult_sub2(i);
+    tmp->Divide((TH1D *)frame->Get1d_sub2(i));
+    tmp->Write("vn1dMult_sub2");
+    ((TH1D *)frame->GetMult_sub2(i))->Write("mult_sub2");
+
+    tmp = (TH1D *) frame->Get1dMult_full(i);
+    tmp->Divide((TH1D *)frame->Get1d_full(i));
+    tmp->Write("vn1dMult_full");
+    ((TH1D *)frame->GetMult_full(i))->Write("mult_full");
+
+ //    int cb = centloc[i];
+ //    int pb = ptloc[i];
+ //    if(hvn[cb][pb]==0) {
+ //      hvn[cb][pb] = frame->Get1d(i);
+ //    } else {
+ //      hvn[cb][pb]->Add(frame->Get1d(i));
+ //    }
+ //    if(pb < 12) {
+ //      double ptav = frame->GetAvPt(i);
+ //      double vnv = frame->GetVn(i);
+ //      double vnve = frame->GetVnErr(i);
+ //      int bin = hvnpt_pos_eta[0]->FindBin(ptav);
+ //      if(frame->GetSide(i).find("pos_eta")!=std::string::npos) {
+ // 	hvnpt_pos_eta[cb]->SetBinContent(bin,vnv);
+ // 	hvnpt_pos_eta[cb]->SetBinError(bin,vnve);
+ //      } else if (frame->GetSide(i).find("neg_eta")!=std::string::npos){
+ // 	hvnpt_neg_eta[cb]->SetBinContent(bin,vnv);
+ // 	hvnpt_neg_eta[cb]->SetBinError(bin,vnve);
+ //      }
+ //    }
+ //  }
+ //  for(int i = 0; i<ncentbins; i++) {
+ //    for(int j = 0; j<nptbins; j++) {
+ //      subsubdirs[i][j]->cd();
+ //      hvn[i][j]->Write("vn");
+ //      hvncorr[i][j]->Write("vncorr");
+ //      hangcorr[i][j]->Write("angcorr");
+ //      hangcorrHFpA[i][j]->Write("angcorr_HFpA");
+ //      hangcorrHFpB[i][j]->Write("angcorr_HFpB");
+ //      hDiff[i][j]->Write("diff2d");
+ //      hResp[i][j]->Write("resp2d");
+ //      diffX[i][j]->Write("diffX");
+ //      diffY[i][j]->Write("diffY");
+ //      runqdifx[i][j]->Write("qdifx");
+ //      runqdify[i][j]->Write("qdify");
+ //      runqdifcnt[i][j]->Write("qdifcnt");
+ //      hCent[i][j]->Write("cent");
+ //      hVtx[i][j]->Write("vtx");
+ //      CreatePlots(i,j);
+ //    }
+ //    subdirs[i]->cd();
+ //    hvnpt_pos_eta[i]->Write("vnpt_pos_eta");
+ //    hvnpt_neg_eta[i]->Write("vnpt_neg_eta");
   }
+ //  fout->cd();
+
+ //  for(int i = 0; i<frame->GetNrange(); i++) {
+ //    frame->SaveFrameworkRuns(i,subsubdirs[centloc[i]][ptloc[i]]);
+ //  }
 
 }
 
-void   CreatePlots(int icent, int ipt, string suffix){
+// void   CreatePlots(int icent, int ipt, string suffix){
 
-  string cname = Form("xy_%d_%d_%3.1f_%3.1f",centbins[icent],centbins[icent+1],ptbinsMin[ipt],ptbinsMax[ipt]);
-  TCanvas * clow = new TCanvas(cname.data(),cname.data(),1300,1300);
-  clow->Divide(2,2);
-  clow->cd(1);
+//   string cname = Form("xy_%d_%d_%3.1f_%3.1f",centbins[icent],centbins[icent+1],ptbinsMin[ipt],ptbinsMax[ipt]);
+//   TCanvas * clow = new TCanvas(cname.data(),cname.data(),1300,1300);
+//   clow->Divide(2,2);
+//   clow->cd(1);
 
-  frame->Get2d(mapm[icent][ipt])->Draw();
-  gPad->SetGrid(1,1);
-  TLine * l1a = new TLine(-1.4,0,1.4,0);
-  l1a->SetLineWidth(2);
-  l1a->Draw();
-  TLine * l2a = new TLine(0,-1.4,0,1.4);
-  l2a->SetLineWidth(2);
-  l2a->Draw();
-  TEllipse * el1a = new TEllipse(0,0,1,1);
-  el1a->SetFillStyle(0);
-  el1a->SetLineWidth(3);
-  el1a->SetLineStyle(2);
-  el1a->SetLineColor(kRed);
-  el1a->Draw();
-  clow->cd(2);
-  frame->Get2d(mapp[icent][ipt])->Draw();
-  gPad->SetGrid(1,1);
-  TLine * l1b = new TLine(-1.4,0,1.4,0);
-  l1b->SetLineWidth(2);
-  l1b->Draw();
-  TLine * l2b = new TLine(0,-1.4,0,1.4);
-  l2b->SetLineWidth(2);
-  l2b->Draw();
-  TEllipse * el1b = new TEllipse(0,0,1,1);
-  el1b->SetFillStyle(0);
-  el1b->SetLineWidth(3);
-  el1b->SetLineStyle(2);
-  el1b->SetLineColor(kRed);
-  el1b->Draw();
-  clow->cd(3);
-  hDiff[icent][ipt]->Draw();
-  gPad->SetGrid(1,1);
-  TLine * l1c = new TLine(-1.4,0,1.4,0);
-  l1c->SetLineWidth(2);
-  l1c->Draw();
-  TLine * l2c = new TLine(0,-1.4,0,1.4);
-  l2c->SetLineWidth(2);
-  l2c->Draw();
-  clow->cd(4);
-  TPaveText * tp = new TPaveText(0.2,0.2,0.8,0.8);
-  tp->SetBorderSize(0);
-  tp->SetFillColor(kWhite);
-  tp->AddText("2018 PbPb");
-  tp->AddText(Form("%d - %d%c",centbins[icent],centbins[icent+1],'%'));
-  tp->AddText(Form("%3.1f < p_{T} <  %3.1f GeV/c",ptbinsMin[ipt],ptbinsMax[ipt]));
-  tp->Draw();
+//   frame->Get2d(mapm[icent][ipt])->Draw();
+//   gPad->SetGrid(1,1);
+//   TLine * l1a = new TLine(-1.4,0,1.4,0);
+//   l1a->SetLineWidth(2);
+//   l1a->Draw();
+//   TLine * l2a = new TLine(0,-1.4,0,1.4);
+//   l2a->SetLineWidth(2);
+//   l2a->Draw();
+//   TEllipse * el1a = new TEllipse(0,0,1,1);
+//   el1a->SetFillStyle(0);
+//   el1a->SetLineWidth(3);
+//   el1a->SetLineStyle(2);
+//   el1a->SetLineColor(kRed);
+//   el1a->Draw();
+//   clow->cd(2);
+//   frame->Get2d(mapp[icent][ipt])->Draw();
+//   gPad->SetGrid(1,1);
+//   TLine * l1b = new TLine(-1.4,0,1.4,0);
+//   l1b->SetLineWidth(2);
+//   l1b->Draw();
+//   TLine * l2b = new TLine(0,-1.4,0,1.4);
+//   l2b->SetLineWidth(2);
+//   l2b->Draw();
+//   TEllipse * el1b = new TEllipse(0,0,1,1);
+//   el1b->SetFillStyle(0);
+//   el1b->SetLineWidth(3);
+//   el1b->SetLineStyle(2);
+//   el1b->SetLineColor(kRed);
+//   el1b->Draw();
+//   clow->cd(3);
+//   hDiff[icent][ipt]->Draw();
+//   gPad->SetGrid(1,1);
+//   TLine * l1c = new TLine(-1.4,0,1.4,0);
+//   l1c->SetLineWidth(2);
+//   l1c->Draw();
+//   TLine * l2c = new TLine(0,-1.4,0,1.4);
+//   l2c->SetLineWidth(2);
+//   l2c->Draw();
+//   clow->cd(4);
+//   TPaveText * tp = new TPaveText(0.2,0.2,0.8,0.8);
+//   tp->SetBorderSize(0);
+//   tp->SetFillColor(kWhite);
+//   tp->AddText("2018 PbPb");
+//   tp->AddText(Form("%d - %d%c",centbins[icent],centbins[icent+1],'%'));
+//   tp->AddText(Form("%3.1f < p_{T} <  %3.1f GeV/c",ptbinsMin[ipt],ptbinsMax[ipt]));
+//   tp->Draw();
   
-  clow->Print(Form("figures/checkXY/%s%s.pdf",clow->GetName(),suffix.data()),"pdf");
-  clow->Close();
-  gSystem->ProcessEvents();
-  delete clow;
-  clow = 0;
-  return;
-}
+//   clow->Print(Form("figures/checkXY/%s%s.pdf",clow->GetName(),suffix.data()),"pdf");
+//   clow->Close();
+//   gSystem->ProcessEvents();
+//   delete clow;
+//   clow = 0;
+//   return;
+// }
