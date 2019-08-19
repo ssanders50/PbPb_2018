@@ -5,7 +5,7 @@ import sys
 ivars = VarParsing.VarParsing('analysis')
 
 ivars.register('lumifile',
-                'json_DCSONLY_HI.txt',
+                'Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt',
 		VarParsing.VarParsing.multiplicity.singleton,
 		VarParsing.VarParsing.varType.string,
                 "lumi file")
@@ -42,15 +42,18 @@ process.options = cms.untracked.PSet(
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '103X_dataRun2_Prompt_v3', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '103X_dataRun2_Prompt_v2', '')
 process.GlobalTag.snapshotTime = cms.string("9999-12-31 23:59:59.000")
 process.GlobalTag.toGet.extend([
     cms.PSet(record = cms.string("HeavyIonRcd"),
-        tag = cms.string("CentralityTable_HFtowers200_DataPbPb_periHYDJETshape_run2v1031x02_offline"),
+        tag = cms.string("CentralityTable_HFtowers200_DataPbPb_periHYDJETshape_run2v1033p1x01_offline"),
         connect = cms.string("frontier://FrontierProd/CMS_CONDITIONS"),
         label = cms.untracked.string("HFtowers")
         ),
     ])
+
+from HeavyIonsAnalysis.Configuration.CommonFunctions_cff import overrideJEC_PbPb5020
+process = overrideJEC_PbPb5020(process)
 
 process.load('RecoHI.HiCentralityAlgos.HiCentrality_cfi')
 process.hiCentrality.produceHFhits = False

@@ -17,15 +17,14 @@ config.section_('User')
 config.section_('Site')
 config.Site.storageSite = 'T2_US_Vanderbilt'
 
-config.Data.lumiMask = 'json_DCSONLY_HI.txt'
-config.JobType.inputFiles = ['json_DCSONLY_HI.txt']
-
-#config.Data.runRange = '326534-326534'
 config.Data.runRange = '326381-326886'
 config.General.requestName = 'PbPb2018_merged_326381_326886'
 config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_merged_326381_326886'
-config.JobType.pyCfgParams = ['noprint','lumifile=json_DCSONLY_HI.txt']
-config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v1/AOD'
+config.Data.lumiMask = 'Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt'
+config.JobType.inputFiles = ['Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
+config.JobType.pyCfgParams = ['noprint','lumifile=Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
+config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
+
 
 if __name__ == '__main__':
 
@@ -46,12 +45,32 @@ if __name__ == '__main__':
     ## From now on that's what users should modify: this is the a-la-CRAB2 configuration part. ##
     #############################################################################################
 
-submit(config)
+#submit(config)
+iovs=[1, 326545, 326620, 326887, 327147, 327230, 328000]
+#niovs = len(iovs)-1
+niovs = 1
+for i in range(0, niovs):
+    print(' =============== ')
+    print(iovs[i])
+    dataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
+    print(dataset)
+    runrange = str(iovs[i])+'-'+str(iovs[i+1]-1)
+    runranges = str(iovs[i])+'_'+str(iovs[i+1]-1)
 
-config.Data.runRange = '326887-327564'
-config.General.requestName = 'PbPb2018_merged_326887_327564'
-config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_merged_326887_327564'
-config.JobType.pyCfgParams = ['noprint','lumifile=json_DCSONLY_HI.txt']
-config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-PromptReco-v2/AOD'
-submit(config)
+    print(runrange)
+    reqname = 'PbPb2018_merged_'+runranges
+    print(reqname)
+    dirbase='/store/user/ssanders/PbPb2018_merged_'+runranges
+    print(dirbase)
+    infiles=['json_DCSONLY_HI.txt']
+    print(infiles)
+    parms=['noprint','lumifile=Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
+    print(parms)
+    config.Data.inputDataset = dataset
+    config.Data.runRange = runrange
+    config.General.requestName = reqname
+    config.Data.outLFNDirBase = dirbase
+    config.JobType.inputFiles=infiles
+    config.JobType.pyCfgParams = parms
+    submit(config)
 
