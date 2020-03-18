@@ -11,7 +11,7 @@ ivars.register('lumifile',
                 "lumi file")
 
 ivars.register('tracks',
-                'generalAndHiPixelTracks',
+                'generalTracks',
 		VarParsing.VarParsing.multiplicity.singleton,
 		VarParsing.VarParsing.varType.string,
                 "track collection")
@@ -61,6 +61,16 @@ process.load("RecoHI.HiCentralityAlgos.CentralityBin_cfi")
 process.centralityBin.Centrality = cms.InputTag("hiCentrality")
 process.centralityBin.centralityVariable = cms.string("HFtowers")
 
+process.load('HeavyIonsAnalysis.Configuration.hfCoincFilter_cff')
+process.load('HeavyIonsAnalysis.Configuration.collisionEventSelection_cff')
+process.load('RecoHI.HiCentralityAlgos.CentralityFilter_cfi')
+
+process.eventSelection = cms.Sequence(
+	process.primaryVertexFilter
+	* process.hfCoincFilter2Th4
+	* process.clusterCompatibilityFilter
+    )
+
 import FWCore.PythonUtilities.LumiList as LumiList
 goodLumiSecs = LumiList.LumiList(filename = ivars.lumifile ).getCMSSWString().split(',')
 
@@ -106,13 +116,13 @@ process.source = cms.Source ("PoolSource",fileNames = cms.untracked.vstring(
         )
                              )
 
-import HLTrigger.HLTfilters.hltHighLevel_cfi
-process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
-process.hltMB.HLTPaths = [
-	"HLT_HIMinimumBias_*"
-	]
-process.hltMB.andOr = cms.bool(True)
-process.hltMB.throw = cms.bool(False)
+#import HLTrigger.HLTfilters.hltHighLevel_cfi
+#process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
+#process.hltMB.HLTPaths = [
+#	"HLT_HIMinimumBias_*"
+#	]
+#process.hltMB.andOr = cms.bool(True)
+#process.hltMB.throw = cms.bool(False)
 
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string("calib.root")
@@ -130,6 +140,7 @@ process.hiEvtPlane.flatdelvtx = cms.double(3.)
 process.hiEvtPlane.useNtrk = cms.untracked.bool(False)
 process.hiEvtPlane.nonDefaultGlauberModel = cms.string("")
 process.hiEvtPlane.minet = cms.double(0.01)
+process.hiEvtPlane.minpt = cms.double(0.5)
 process.evtPlaneCalibTree.useNtrk = cms.untracked.bool(False)
 process.evtPlaneCalibTree.vertexTag_ = cms.InputTag("offlinePrimaryVerticesRecovery")
 process.evtPlaneCalibTree.trackTag = cms.InputTag(ivars.tracks);
@@ -138,9 +149,9 @@ process.evtPlaneCalibTree.flatnvtxbins = cms.int32(10)
 process.evtPlaneCalibTree.flatminvtx = cms.double(-15.)
 process.evtPlaneCalibTree.flatdelvtx = cms.double(3.)
 process.evtPlaneCalibTree.minet_ = cms.untracked.double(0.01)
+process.evtPlaneCalibTree.minpt_ = cms.untracked.double(0.5)
 
-
-process.p = cms.Path(process.hltMB*process.centralityBin*process.offlinePrimaryVerticesRecover*process.hiEvtPlane * process.evtPlaneCalibTree  )
+process.p = cms.Path(process.offlinePrimaryVerticesRecovery*process.eventSelection*process.centralityBin*process.hiEvtPlane * process.evtPlaneCalibTree  )
 
 from HLTrigger.Configuration.CustomConfigs import MassReplaceInputTag
 process = MassReplaceInputTag(process,"offlinePrimaryVertices","offlinePrimaryVerticesRecovery")
