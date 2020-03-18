@@ -24,15 +24,20 @@ process = cms.Process("FlatCalib")
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.StandardSequences.GeometryDB_cff')
+process.load("TrackingTools/TransientTrack/TransientTrackBuilder_cfi")
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+process.load("RecoVertex.PrimaryVertexProducer.OfflinePrimaryVerticesRecovery_cfi")
 process.load("RecoHI.HiEvtPlaneAlgos.HiEvtPlane_cfi")
 process.load("HeavyIonsAnalysis.HiEvtPlaneCalib.evtplanecalibtree_cfi")
+
 process.load('HeavyIonsAnalysis.EventAnalysis.clusterCompatibilityFilter_cfi')
 process.load("HeavyIonsAnalysis.Configuration.hfCoincFilter_cff")
 process.load("HeavyIonsAnalysis.Configuration.analysisFilters_cff")
+process.load('HeavyIonsAnalysis.EventAnalysis.skimanalysis_cfi')
 process.load("HeavyIonsAnalysis.Configuration.collisionEventSelection_cff")
-process.load("MergingProducer.generalAndHiPixelTracks.MergingPixAndGenProducer_cfi")
+
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
@@ -40,7 +45,6 @@ process.options = cms.untracked.PSet(
     Rethrow = cms.untracked.vstring('ProductNotFound')
 )
 
-process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '103X_dataRun2_Prompt_v2', '')
 process.GlobalTag.snapshotTime = cms.string("9999-12-31 23:59:59.000")
@@ -52,28 +56,10 @@ process.GlobalTag.toGet.extend([
         ),
     ])
 
-from HeavyIonsAnalysis.Configuration.CommonFunctions_cff import overrideJEC_PbPb5020
-process = overrideJEC_PbPb5020(process)
-
 process.load('RecoHI.HiCentralityAlgos.HiCentrality_cfi')
-process.hiCentrality.produceHFhits = False
-process.hiCentrality.produceHFtowers = False
-process.hiCentrality.produceEcalhits = False
-process.hiCentrality.produceZDChits = False
-process.hiCentrality.produceETmidRapidity = False
-process.hiCentrality.producePixelhits = False
-process.hiCentrality.produceTracks = False
-process.hiCentrality.producePixelTracks = False
-process.hiCentrality.reUseCentrality = True
-process.hiCentrality.srcReUse = cms.InputTag("hiCentrality","","RECO")
-process.hiCentrality.srcTracks = cms.InputTag("generalTracks")
-process.hiCentrality.srcVertex = cms.InputTag("offlinePrimaryVertices")
-
 process.load("RecoHI.HiCentralityAlgos.CentralityBin_cfi")
 process.centralityBin.Centrality = cms.InputTag("hiCentrality")
 process.centralityBin.centralityVariable = cms.string("HFtowers")
-process.centralityBin.nonDefaultGlauberModel = cms.string("")
-
 
 import FWCore.PythonUtilities.LumiList as LumiList
 goodLumiSecs = LumiList.LumiList(filename = ivars.lumifile ).getCMSSWString().split(',')
@@ -120,59 +106,44 @@ process.source = cms.Source ("PoolSource",fileNames = cms.untracked.vstring(
         )
                              )
 
+import HLTrigger.HLTfilters.hltHighLevel_cfi
+process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
+process.hltMB.HLTPaths = [
+	"HLT_HIMinimumBias_*"
+	]
+process.hltMB.andOr = cms.bool(True)
+process.hltMB.throw = cms.bool(False)
+
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string("calib.root")
 )
-
-
-#import HLTrigger.HLTfilters.hltHighLevel_cfi
-#process.hltSelect = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
-#process.hltSelect.HLTPaths = [
-#        "HLT_HIMinimumBias_*",
-#    ]
-#process.hltSelect.andOr = cms.bool(True)
-#process.hltSelect.throw = cms.bool(False)
-
-# Event Selection
-#process.towersAboveThreshold.minimumE = cms.double(4.0)
-process.primaryVertexFilter.src = cms.InputTag("offlinePrimaryVertices")
-#process.eventSelection = cms.Sequence(
-#     process.primaryVertexFilter
-#     + process.phiCoincFilter2Th4
-#     + clusterCompatibilityFilter
-#)
+ 
 
 process.dump = cms.EDAnalyzer("EventContentAnalyzer")
 
 process.hiEvtPlane.loadDB = cms.bool(False)
 process.hiEvtPlane.trackTag = cms.InputTag(ivars.tracks)
-process.hiEvtPlane.vertexTag = cms.InputTag("offlinePrimaryVertices")
+process.hiEvtPlane.vertexTag = cms.InputTag("offlinePrimaryVerticesRecovery")
 process.hiEvtPlane.flatnvtxbins = cms.int32(10)
 process.hiEvtPlane.flatminvtx = cms.double(-15.)
 process.hiEvtPlane.flatdelvtx = cms.double(3.)
 process.hiEvtPlane.useNtrk = cms.untracked.bool(False)
 process.hiEvtPlane.nonDefaultGlauberModel = cms.string("")
 process.hiEvtPlane.minet = cms.double(0.01)
-process.hiEvtPlane.dzdzerror = process.generalAndHiPixelTracks.dzErrMax
-process.hiEvtPlane.d0d0error = process.generalAndHiPixelTracks.dxyErrMax
-process.hiEvtPlane.pterror = process.generalAndHiPixelTracks.ptErrMax
-process.hiEvtPlane.dzdzerror_pix = process.generalAndHiPixelTracks.dzErrMaxPixel
-process.hiEvtPlane.d0d0error_pix = process.generalAndHiPixelTracks.dxyErrMaxPixel
-process.hiEvtPlane.chi2 = process.generalAndHiPixelTracks.chi2nMaxPixel
 process.evtPlaneCalibTree.useNtrk = cms.untracked.bool(False)
-process.evtPlaneCalibTree.vertexTag_ = cms.InputTag("offlinePrimaryVertices")
+process.evtPlaneCalibTree.vertexTag_ = cms.InputTag("offlinePrimaryVerticesRecovery")
 process.evtPlaneCalibTree.trackTag = cms.InputTag(ivars.tracks);
 process.evtPlaneCalibTree.nonDefaultGlauberModel = cms.string("")
 process.evtPlaneCalibTree.flatnvtxbins = cms.int32(10)
 process.evtPlaneCalibTree.flatminvtx = cms.double(-15.)
 process.evtPlaneCalibTree.flatdelvtx = cms.double(3.)
-process.evtPlaneCalibTree.dzdzerror_ = process.generalAndHiPixelTracks.dzErrMax
-process.evtPlaneCalibTree.d0d0error_ = process.generalAndHiPixelTracks.dxyErrMax
-process.evtPlaneCalibTree.pterror_ = process.generalAndHiPixelTracks.ptErrMax
 process.evtPlaneCalibTree.minet_ = cms.untracked.double(0.01)
-process.evtPlaneCalibTree.dzdzerror_pix_ = process.generalAndHiPixelTracks.dzErrMaxPixel
-process.evtPlaneCalibTree.d0d0error_pix_ = process.generalAndHiPixelTracks.dxyErrMaxPixel
-process.evtPlaneCalibTree.chi2_ = process.generalAndHiPixelTracks.chi2nMaxPixel
-process.p = cms.Path(process.collisionEventSelectionAODv2*process.centralityBin*process.generalAndHiPixelTracks*process.hiEvtPlane * process.evtPlaneCalibTree  )
+
+
+process.p = cms.Path(process.hltMB*process.centralityBin*process.offlinePrimaryVerticesRecover*process.hiEvtPlane * process.evtPlaneCalibTree  )
+
+from HLTrigger.Configuration.CustomConfigs import MassReplaceInputTag
+process = MassReplaceInputTag(process,"offlinePrimaryVertices","offlinePrimaryVerticesRecovery")
+process.offlinePrimaryVerticesRecovery.oldVertexLabel = "offlinePrimaryVertices"
 
 
