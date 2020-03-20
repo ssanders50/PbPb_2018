@@ -159,6 +159,7 @@ private:
   double  pterror_;
   double dzdzerror_pix_;
   double chi2_;
+  double chi2perlayer_;
   double minvz_;
   double maxvz_;
   bool TrackQuality_ppReco(const reco::TrackCollection::const_iterator&, const reco::VertexCollection&);
@@ -372,7 +373,7 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   dzdzerror_pix_ = iConfig.getUntrackedParameter<double>("dzdzerror_pix_") ;
   minvz_ = iConfig.getUntrackedParameter<double>("minvz_", -15.);
   maxvz_ = iConfig.getUntrackedParameter<double>("maxvz_", 15.);
- 
+  chi2perlayer_ = iConfig.getUntrackedParameter<double>("chi2perlayer_", 0.15);
   storeNames_ = 1;
   
   FirstEvent = kTRUE;
@@ -409,6 +410,7 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   cout<<"  flatdelvtx_:            "<<flatdelvtx_<<endl;
   cout<<"  dzdzerror_:             "<<dzdzerror_<<endl;
   cout<<"  d0d0error_:             "<<d0d0error_<<endl;
+  cout<<"  chi2perlayer_:          "<<chi2perlayer_<<endl;
   cout<<"  pterror_:               "<<pterror_<<endl;
   cout<<"  dzdzerror_pix_          "<<dzdzerror_pix_<<endl;
   cout<<"  chi2_                   "<<chi2_<<endl;
@@ -730,6 +732,10 @@ EvtPlaneCalibTree::TrackQuality_ppReco(const reco::TrackCollection::const_iterat
 {
         if ( itTrack->charge() == 0 ) return false;
         if ( !itTrack->quality(reco::TrackBase::highPurity) ) return false;
+	if ( itTrack->numberOfValidHits() < 11 ) return false;
+	if ( itTrack->normalizedChi2() / itTrack->hitPattern().trackerLayersWithMeasurement() > chi2perlayer_ ) {
+	  	return false;
+	}
         if ( itTrack->ptError()/itTrack->pt() > pterror_ ) return false;
 	int primaryvtx = 0;
 	math::XYZPoint v1( recoVertices[primaryvtx].position().x(), recoVertices[primaryvtx].position().y(), recoVertices[primaryvtx].position().z() );
