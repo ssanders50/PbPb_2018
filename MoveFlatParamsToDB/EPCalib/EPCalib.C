@@ -59,8 +59,8 @@ struct offstruct{
 struct offstruct  offs[12];
 
 
-Bool_t test = true;
-int ntest = 200000;
+Bool_t test = false;
+int ntest = 20000000;
   double sumcos=0;
   double sumsin=0;
   double sumcnt=0;
