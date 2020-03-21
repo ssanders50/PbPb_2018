@@ -59,8 +59,8 @@ struct offstruct{
 struct offstruct  offs[12];
 
 
-Bool_t test = false;
-int ntest = 100000000;
+Bool_t test = true;
+int ntest = 200000;
   double sumcos=0;
   double sumsin=0;
   double sumcnt=0;
@@ -101,10 +101,11 @@ double minet_;
 double maxet_;
 double minpt_;
 double maxpt_;
-double flatminvtx_;
-double flatmaxvtx_;
-double flatdelvtx_;
+double flatminvtx_=-25.;
+double flatmaxvtx_=25.;
+double flatdelvtx_=5.;
 int flatnvtxbins_;
+double chi2perlayer_;
 double caloCentRef_;
 double caloCentRefWidth_;
 TH1D * flatXhist[NumEPNames];
@@ -164,7 +165,7 @@ string ressaveName;
 #include "src/Loop2.h"
 #include "src/Loop3.h"
 #include "src/rescor.h"
-void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "tmp.lis",  string ssave="/rfs/sanders/tmpPbPb", string epsave="/rfs/sanders/EPPbPb.root",string foffsave="/rfs/sanders/foff.root", string ressave="Rescor"){
+void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "tmp.lis",  string ssave="/resfs/sanders/tmpPbPb", string epsave="/resfs/sanders/EPPbPb.root",string foffsave="/resfs/sanders/foff.root", string ressave="Rescor"){
   TH1I * runchk = NULL;
   saveName=ssave;
   epsaveName=epsave;
@@ -219,6 +220,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
   maxet_ = fparams->GetBinContent(2);
   minpt_ = fparams->GetBinContent(3);
   maxpt_ = fparams->GetBinContent(4);
+  chi2perlayer_ = 0.18;
   flatminvtx_ = fparams->GetBinContent(5);
   flatmaxvtx_ = fparams->GetBinContent(6);
   flatdelvtx_ = fparams->GetBinContent(7);
@@ -240,6 +242,7 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
   cout<<"maxet_                "<<maxet_<<endl;
   cout<<"minpt_                "<<minpt_<<endl;
   cout<<"maxpt_                "<<maxpt_<<endl;
+  cout<<"chi2perlayer_         "<<chi2perlayer_<<endl;
   cout<<"flatminvtx_           "<<flatminvtx_<<endl;
   cout<<"flatmaxvtx_           "<<flatmaxvtx_<<endl;
   cout<<"flatdelvtx_           "<<flatdelvtx_<<endl;
@@ -288,10 +291,12 @@ void EPCalib(unsigned int minRun=0, unsigned int maxRun=500000,string inList = "
     
 
     flat[i] = new HiEvtPlaneFlatten();
-    flat[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i].data(),EPOrder[i]);
+    flat[i]->init(FlatOrder_,NumFlatBins_,EPNames[i].data(),EPOrder[i]);
+    //flat[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i].data(),EPOrder[i]);
     
     flatOffset[i] = new HiEvtPlaneFlatten();
-    flatOffset[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i].data(),EPOrder[i]);
+    flatOffset[i]->init(FlatOrder_,NumFlatBins_,EPNames[i].data(),EPOrder[i]);
+    //flatOffset[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i].data(),EPOrder[i]);
 
     if(caloCentRef_>0) {
       int minbin = (caloCentRef_-caloCentRefWidth_/2.)*nCentBins_/100.;

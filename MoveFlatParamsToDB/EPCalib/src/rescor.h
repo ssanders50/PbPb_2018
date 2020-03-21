@@ -20,10 +20,6 @@ using namespace hi;
 void ResCor(Double_t mincent, Double_t maxcent, Double_t delcent, Double_t minvtx, Double_t maxvtx ){
 TFile * tf;
 TTree * tr;
- FILE * ftest;
- ftest=fopen(ressaveName.data(),"r");
- if(ftest!=NULL) system(Form("rm -rf %s",ressaveName.data()));
- system(Form("mkdir %s",ressaveName.data()));
  FILE * fout[NumEPNames];
  for(int i = 0; i<NumEPNames; i++) {
    if(mincent==0) {
@@ -149,6 +145,10 @@ TTree * tr;
 }
 
 void rescor(){
+  FILE * ftest;
+  ftest=fopen(ressaveName.data(),"r");
+  if(ftest!=NULL) system(Form("rm -rf %s",ressaveName.data()));
+  system(Form("mkdir %s",ressaveName.data()));
   ResCor(0,100,1,-15,15);
   ResCor(0,100,2,-15,15);
   ResCor(0,100,5,-15,15);
