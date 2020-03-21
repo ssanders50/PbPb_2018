@@ -177,6 +177,7 @@ private:
   double effm_;
   double minpt_;
   double maxpt_;
+  
    int flatnvtxbins_;
   double flatminvtx_;
   double flatmaxvtx_;
@@ -451,7 +452,7 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   
   save->cd();
   
-  fparams = fs->make<TH1D>("fparams","fparams",10,0,10);
+  fparams = fs->make<TH1D>("fparams","fparams",12,0,12);
   iparams = fs->make<TH1I>("iparams","iparams",10,0,10);
   hNtrkoff = fs->make<TH1D>("Ntrkoff","Ntrkoff",5001,0,5000);
   hpt    = fs->make<TH2F>("hpt",   "hpt",   NumFlatBins_,0,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatmaxvtx_);
@@ -492,6 +493,7 @@ EvtPlaneCalibTree::EvtPlaneCalibTree(const edm::ParameterSet& iConfig) {
   fparams->SetBinContent(7,flatdelvtx_);
   fparams->SetBinContent(8,caloCentRef_);
   fparams->SetBinContent(9,caloCentRefWidth_);
+  fparams->SetBinContent(10,chi2perlayer_);
   iparams->SetBinContent(1,FlatOrder_);
   iparams->SetBinContent(2,NumFlatBins_);
   iparams->SetBinContent(3,CentBinCompression_);
