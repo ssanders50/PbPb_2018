@@ -9,9 +9,9 @@ rm -rf RescorTables
 cp *.db dbfiles/.
 rm macros/checkplots/hi*.pdf
 rm tmphi.lis
-ls -1 /resfs/sanders/crab_projects/crab_PbPb2018_March2020_*/calib*.root > tmphi.lis
-ls tmp.lis
-declare -a list=(1 326545 326620 326887 327147 327230 328000)
+ls -1 /resfs/sanders/crab_projects/crab_PbPb2018_March2020_1_326544/calib*.root > tmphi.lis
+ls tmphi.lis
+declare -a list=(1 326545)
 
 nbreaks=${#list[@]}
 echo $nbreaks
@@ -49,7 +49,7 @@ rm /resfs/sanders/tmpPbPb2018_March2020
 #mv RescorTables RescorSave/RescorTables_PbPb2018_March2020_$range
 conddb_import -f sqlite_file:HeavyIonRPRcd_PbPb2018_March2020_$range.db -c sqlite_file:HeavyIonRPRcd_PbPb2018_March2020_offline.db -i HeavyIonRPRcd -t HeavyIonRPRcd -b $minrun -e $maxrun
 cd macros
-arg='CheckFlattening.C+("/panfs/EP_PbPb2018_March2020_'
+arg='CheckFlattening.C+("/resfs/sanders/EP_PbPb2018_March2020_'
 arg+=$range
 arg+='.root")'
 root -l -b -q $arg
