@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
 evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
-                            vertexTag_=cms.InputTag("hiSelectedVertex"),
+                            vertexTag_=cms.InputTag("offlinePrimaryVerticesRecovery"),
                             centralityTag_=cms.InputTag("hiCentrality"),
                             caloTag_ = cms.InputTag("towerMaker"),
                             centralityBinTag_ = cms.InputTag("centralityBin","HFtowers"),
@@ -10,9 +10,9 @@ evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
                             FlatOrder_ = cms.untracked.int32(9),
                             NumFlatBins_ = cms.untracked.int32(40),
                             CentBinCompression_ = cms.untracked.int32(5),
-                            minet_ = cms.untracked.double(-1.),
+                            minet_ = cms.untracked.double(0.01),
                             maxet_ = cms.untracked.double(-1.),
-                            minpt_ = cms.untracked.double(0.3),
+                            minpt_ = cms.untracked.double(0.5),
                             maxpt_ = cms.untracked.double(3.0),
                             flatnvtxbins_ = cms.int32(10),
                             flatminvtx_ = cms.double(-15.0),
@@ -25,11 +25,11 @@ evtPlaneCalibTree = cms.EDAnalyzer("EvtPlaneCalibTree",
                             genMC_ = cms.untracked.bool(False),
                             bTag_ = cms.InputTag("mcEvtPlane","b","FlatCalib"),
                             bypassCentrality_ = cms.untracked.bool(False),
-                            trackTag = cms.InputTag("hiGeneralTracks"),
+                            trackTag = cms.InputTag("generalTracks"),
                             minvz_ = cms.untracked.double(-15.),
                             maxvz_ = cms.untracked.double(15.),
-                            dzdzerror_pix_ = cms.untracked.double(8.0),
-                            chi2_ = cms.untracked.double(12.)
+                            dzdzerror_pix_ = cms.untracked.double(40.0),
+                            chi2_ = cms.untracked.double(40.)
                             )
                             
 

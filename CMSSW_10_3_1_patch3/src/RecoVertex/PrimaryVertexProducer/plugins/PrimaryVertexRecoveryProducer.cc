@@ -367,8 +367,10 @@ PrimaryVertexRecoveryProducer::produce(edm::Event& iEvent, const edm::EventSetup
     }
 
     if(!(vColl[0].isFake())){
-      std::cout << "Recovered a Vertex with " <<  std::setw(3) << vColl[0].tracksSize() << " tracks!" << std::endl;
-      std::cout << "x: " << std::setw(6) << vColl[0].position().x() << " y: " << std::setw(6) << vColl[0].position().y() << " z: " << std::setw(6) << vColl[0].position().z() << " chi2/ndof: " <<  std::setw(4) << vColl[0].chi2()/vColl[0].ndof() << std::endl;
+      if(fVerbose){
+	std::cout << "Recovered a Vertex with " <<  std::setw(3) << vColl[0].tracksSize() << " tracks!" << std::endl;
+	std::cout << "x: " << std::setw(6) << vColl[0].position().x() << " y: " << std::setw(6) << vColl[0].position().y() << " z: " << std::setw(6) << vColl[0].position().z() << " chi2/ndof: " <<  std::setw(4) << vColl[0].chi2()/vColl[0].ndof() << std::endl;
+      }
     }
     iEvent.put(std::move(result), algorithm->label); 
   }
