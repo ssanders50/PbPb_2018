@@ -66,12 +66,12 @@ using namespace edm;
 static const int ncentbins = 13;
 static const  double centbins[]={0, 5, 10, 15, 20, 25, 30, 35, 40,  50, 60, 70, 80, 100};
 
-static const int nptbins = 28;
-static const float ptbins[]={0.3, 0.4, 0.5,  0.6,  0.8,  1.0,  1.25,  1.50,  2.0,
-			      2.5,  3.0,  3.5,  4.0,  5.0,  6.0,  7.0, 8.0, 10., 12.0, 14.0, 16.0,  20.0, 26.0, 35.0, 45.0, 60.0, 80.0, 100., 200.};
+static const int nptbins = 12;
+static const float ptbins[]={0.5, 0.6,  0.8,  1.0,  1.40,  1.8,
+			      2.2,  2.8,  3.6,  4.6,  6.0,  7.0, 8.5};
 
-static const int netabinsDefault = 12;
-static const float etabinsDefault[]={-2.4, -2.0, -1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4};
+static const int netabinsDefault = 4;
+static const float etabinsDefault[]={-2.0,-1.0,0.,1.0,2.0};
 static const int nanals = 3;
 enum AnalType {
         N2,          N3,         N4       
@@ -164,7 +164,7 @@ private:
   double dzdzerror_;
   double d0d0error_;
   double pterror_;
-
+  double chi2perlayer_;
   Double_t epang[NumEPNames];
   Double_t eporig[NumEPNames];
   Double_t epsin[NumEPNames];
@@ -180,10 +180,19 @@ private:
 
   Double_t rescor[NumEPNames];
   Double_t rescorErr[NumEPNames];
+  TH1D * hsumw[NumEPNames];
+  
   TH1D * hPsi[NumEPNames];
   TH1D * hPsiOffset[NumEPNames];
   TH1D * hPsiFlat[NumEPNames];
 
+  TH1D * hEP_BA[NumEPNames];
+  TH1D * hEP_CA[NumEPNames];
+  TH1D * hEP_CB[NumEPNames];
+  TH1D * hEP_BAcnt[NumEPNames];
+  TH1D * hEP_CAcnt[NumEPNames];
+  TH1D * hEP_CBcnt[NumEPNames];
+  TH1D * hMult[NumEPNames];
 
   unsigned int runno_;
 
@@ -199,15 +208,17 @@ private:
   int flatnvtxbins_;
   double flatminvtx_;
   double flatdelvtx_;
-  TH2D * qxtrk[7];
-  TH2D * qytrk[7];
-  TH2D * qcnt;
-  TH2D * avpt;
+  TH2F * qxtrk[7];
+  TH2F * qytrk[7];
+  TH2F * qcnt;
+  TH2F * avpt;
   TH2D * res[7][ncentbins];
   TH2D * resw[7][ncentbins];
   TH2D * resep[7][ncentbins];
   TH2D * rescnt[7][ncentbins];
-  
+  TH2D * ptspec[ncentbins];
+  TH2D * ptspecCnt[ncentbins];
+ 
   HiEvtPlaneFlatten * flat[NumEPNames];
   bool loadDB_;
   bool useNcentbins_; 
@@ -216,28 +227,17 @@ private:
   bool makeTree_;
   int nCentBins_ = 1;
   int ntrack;
+  bool Recenter_;
 
 
   //==============  Harmonics ============
   TH2D * ptav[ncentbins];
   TH2D * ptcnt[ncentbins];
-  TH2D * qA[ncentbins][11];
-  TH2D * qB[ncentbins][11];
-  TH2D * v1MC[ncentbins];
-  TH2D * v2MC[ncentbins];
-  TH2D * v3MC[ncentbins];
-  TH2D * vnCntMC[ncentbins];
+  TH2D * badcnt[ncentbins];
   TH1D * qres;
-  TH1D * thA[ncentbins][11];
-  TH1D * thB[ncentbins][11];
-  TH1D * thC[ncentbins][11];
-  TH1D * thA2[ncentbins][11];
-  TH1D * thB2[ncentbins][11];
-  TH1D * thC2[ncentbins][11];
-  TH1D * thn[ncentbins][11];
-
-  TH2D * wnA[ncentbins][11];
-  TH2D * wnB[ncentbins][11];
+  TH2D * qxav[3][ncentbins];
+  TH2D * qyav[3][ncentbins];
+  TH2D * qxycnt[ncentbins];
   TH2D * hTemplate;
   TH2D * qxt = 0;
   TH2D * qyt = 0;
@@ -260,26 +260,27 @@ private:
     TH2D * qB[ncentbins][11];
     TH2D * wnA[ncentbins][11];
     TH2D * wnB[ncentbins][11];
-    TH1D * thA[ncentbins][11];
-    TH1D * thB[ncentbins][11];
-    TH1D * thC[ncentbins][11];
-    TH1D * thA2[ncentbins][11];
-    TH1D * thB2[ncentbins][11];
-    TH1D * thC2[ncentbins][11];
-    TH1D * thn[ncentbins][11];
+    TH2D * rA[ncentbins][11];
+    TH2D * rB[ncentbins][11];
+    TH2D * rAcnt[ncentbins][11];
+    TH2D * rBcnt[ncentbins][11];
     TH1D * qBA[ncentbins][11];
     TH1D * qCA[ncentbins][11];
     TH1D * qCB[ncentbins][11];
     TH1D * qBAcnt[ncentbins][11];
     TH1D * qCAcnt[ncentbins][11];
     TH1D * qCBcnt[ncentbins][11];
-    TH1D * qBA2[ncentbins][11];
-    TH1D * qCA2[ncentbins][11];
-    TH1D * qCB2[ncentbins][11];
-    TH1D * qBAcnt2[ncentbins][11];
-    TH1D * qCAcnt2[ncentbins][11];
-    TH1D * qCBcnt2[ncentbins][11];
+    TH1D * rBA[ncentbins][11];
+    TH1D * rCA[ncentbins][11];
+    TH1D * rCB[ncentbins][11];
+    TH1D * rBAcnt[ncentbins][11];
+    TH1D * rCAcnt[ncentbins][11];
+    TH1D * rCBcnt[ncentbins][11];
+    TH1D * wA[ncentbins][11];
+    TH1D * wB[ncentbins][11];
+    TH1D * wC[ncentbins][11];
   } qanal[nanals];
+
 
   //===================================
 
@@ -298,7 +299,80 @@ private:
 
 
   TRandom * ran;
-#include "HeavyIonsAnalysis/VNAnalysis/interface/Harmonics.h"
+  bool Fill_N(int anal,int n, int bin, TH2F *qxtrk_, TH2F * qytrk_, TH2F * qcnt_, double Ax, double Ay, double Bx, double By, double Cx, double Cy, double wA, double wB, double wC, double thA, double thB, double thC){
+    bool stat = false;
+    if(pow(Ax,2)+pow(Ay,2) < 1e-6) return stat;
+    if(pow(Bx,2)+pow(By,2) < 1e-6) return stat;
+    if(pow(Cx,2)+pow(Cy,2) < 1e-6) return stat;
+    for(int i = 1; i<=qxtrk_->GetNbinsX(); i++) {
+      for(int j = 1; j<=qxtrk_->GetNbinsY(); j++) {
+	if(qxtrk_->GetBinContent(i,j)!=0) {
+	  double th = TMath::ATan2(qytrk_->GetBinContent(i,j),qxtrk_->GetBinContent(i,j));
+	  qanal[anal].rA[bin][0]->SetBinContent(i,j,qanal[anal].rA[bin][0]->GetBinContent(i,j)+TMath::Cos(n*(th-thA)));
+	  qanal[anal].rB[bin][0]->SetBinContent(i,j,qanal[anal].rB[bin][0]->GetBinContent(i,j)+TMath::Cos(n*(th-thB)));
+	  qanal[anal].rAcnt[bin][0]->SetBinContent(i,j,qanal[anal].rAcnt[bin][0]->GetBinContent(i,j)+1);
+	  qanal[anal].rBcnt[bin][0]->SetBinContent(i,j,qanal[anal].rBcnt[bin][0]->GetBinContent(i,j)+1);
+	}
+      }
+    }
+    qanal[anal].qA[bin][0]->Add(qxtrk_,Ax);
+    qanal[anal].qA[bin][0]->Add(qytrk_,Ay);
+    qanal[anal].qB[bin][0]->Add(qxtrk_,Bx);
+    qanal[anal].qB[bin][0]->Add(qytrk_,By);
+    qanal[anal].wnA[bin][0]->Add(qcnt_,wA);
+    qanal[anal].wnB[bin][0]->Add(qcnt_,wB);
+    qanal[anal].qBA[bin][0]->Fill(0.,Bx*Ax + By*Ay);
+    qanal[anal].qCA[bin][0]->Fill(0.,Cx*Ax + Cy*Ay);
+    qanal[anal].qCB[bin][0]->Fill(0.,Cx*Bx + Cy*By);
+    qanal[anal].qBAcnt[bin][0]->Fill(0.,wB*wA);
+    qanal[anal].qCAcnt[bin][0]->Fill(0.,wC*wA);
+    qanal[anal].qCBcnt[bin][0]->Fill(0.,wC*wB);
+    qanal[anal].wA[bin][0]->Fill(wA);
+    qanal[anal].wB[bin][0]->Fill(wB);
+    qanal[anal].wC[bin][0]->Fill(wC);
+    qanal[anal].rBA[bin][0]->Fill(0.,TMath::Cos(n*(thB-thA)));
+    qanal[anal].rCA[bin][0]->Fill(0.,TMath::Cos(n*(thC-thA)));
+    qanal[anal].rCB[bin][0]->Fill(0.,TMath::Cos(n*(thC-thB)));
+    qanal[anal].rBAcnt[bin][0]->Fill(0.);
+    qanal[anal].rCAcnt[bin][0]->Fill(0.);
+    qanal[anal].rCBcnt[bin][0]->Fill(0.);
+    
+    int j=(int)(ran->Uniform(0,9.999))+1;
+    qanal[anal].qA[bin][j]->Add(qxtrk_,Ax);
+    qanal[anal].qA[bin][j]->Add(qytrk_,Ay);
+    qanal[anal].qB[bin][j]->Add(qxtrk_,Bx);
+    qanal[anal].qB[bin][j]->Add(qytrk_,By);
+    qanal[anal].wnA[bin][j]->Add(qcnt_,wA);
+    qanal[anal].wnB[bin][j]->Add(qcnt_,wB);
+    qanal[anal].qBA[bin][j]->Fill(0.,Bx*Ax + By*Ay);
+    qanal[anal].qCA[bin][j]->Fill(0.,Cx*Ax + Cy*Ay);
+    qanal[anal].qCB[bin][j]->Fill(0.,Cx*Bx + Cy*By);
+    qanal[anal].qBAcnt[bin][j]->Fill(0.,wB*wA);
+    qanal[anal].qCAcnt[bin][j]->Fill(0.,wC*wA);
+    qanal[anal].qCBcnt[bin][j]->Fill(0.,wC*wB);
+    qanal[anal].wA[bin][j]->Fill(wA);
+    qanal[anal].wB[bin][j]->Fill(wB);
+    qanal[anal].wC[bin][j]->Fill(wC);
+    qanal[anal].rBA[bin][j]->Fill(0.,TMath::Cos(n*(thB-thA)));
+    qanal[anal].rCA[bin][j]->Fill(0.,TMath::Cos(n*(thC-thA)));
+    qanal[anal].rCB[bin][j]->Fill(0.,TMath::Cos(n*(thC-thB)));
+    qanal[anal].rBAcnt[bin][j]->Fill(0.);
+    qanal[anal].rCAcnt[bin][j]->Fill(0.);
+    qanal[anal].rCBcnt[bin][j]->Fill(0.);
+    stat = true;
+    for(int i = 1; i<=qxtrk_->GetNbinsX(); i++) {
+      for(int k = 1; k<=qxtrk_->GetNbinsY(); k++) {
+	if(qxtrk_->GetBinContent(i,k)!=0) {
+	  double th = TMath::ATan2(qytrk_->GetBinContent(i,k),qxtrk_->GetBinContent(i,k));
+	  qanal[anal].rA[bin][j]->SetBinContent(i,k,qanal[anal].rA[bin][j]->GetBinContent(i,k)+TMath::Cos(n*(th-thA)));
+	  qanal[anal].rB[bin][j]->SetBinContent(i,k,qanal[anal].rB[bin][j]->GetBinContent(i,k)+TMath::Cos(n*(th-thB)));
+	  qanal[anal].rAcnt[bin][j]->SetBinContent(i,k,qanal[anal].rAcnt[bin][0]->GetBinContent(i,k)+1);
+	  qanal[anal].rBcnt[bin][j]->SetBinContent(i,k,qanal[anal].rBcnt[bin][0]->GetBinContent(i,k)+1);
+	}
+      }
+    }
+    return stat;
+  }
   
   //===================================
   
@@ -309,9 +383,9 @@ private:
     int Ntrk = 0;
     using namespace edm;
     using namespace reco;
-    for(int i = 0; i<7; i++) {
-      qxtrk[i]->Reset();
-      qytrk[i]->Reset();
+    for(int i = 2; i<4; i++) {
+      qxtrk[i-2]->Reset();
+      qytrk[i-2]->Reset();
     }
     qcnt->Reset();
     avpt->Reset();
@@ -338,23 +412,26 @@ private:
     }        
     
     iEvent.getByLabel(trackTag_,trackCollection_);
-    int k = (vtx-flatminvtx_)/flatdelvtx_;
     for(TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); ++itTrack) { 
       if ( sTrackQuality == HIReco and not TrackQuality_HIReco(itTrack, recoVertices) ) continue;
       else if ( sTrackQuality == ppReco and not TrackQuality_ppReco(itTrack, recoVertices) ) continue;
       else if ( sTrackQuality == Pixel  and not TrackQuality_Pixel (itTrack, recoVertices) ) continue;
       else if ( sTrackQuality == GenMC  and not TrackQuality_GenMC (itTrack, recoVertices) ) continue;
-      double eff = 1.;
-      if(k>=0&&k<flatnvtxbins_) {
-	for(int iorder = 1; iorder <=7; iorder++) {
-	  qxtrk[iorder-1]->Fill(itTrack->pt(), itTrack->eta(), eff*(TMath::Cos(iorder*itTrack->phi())));
-	  qytrk[iorder-1]->Fill(itTrack->pt(), itTrack->eta(), eff*(TMath::Sin(iorder*itTrack->phi())));
-	}
-	qcnt->Fill(itTrack->pt(), itTrack->eta(), eff);
-	avpt->Fill(itTrack->pt(), itTrack->eta(), eff*itTrack->pt());
-      }
-      if( itTrack->pt() < 0.2 ) continue;
+      if( itTrack->pt() < 0.5 ) continue;
       ++Ntrk;
+
+      double eta = itTrack->eta();
+      double pt = itTrack->pt();
+      double phi = itTrack->phi();
+      for(int iorder = 2; iorder <=4; iorder++) {
+	qxtrk[iorder-2]->Fill(pt, eta, (TMath::Cos(iorder*phi)));
+	qytrk[iorder-2]->Fill(pt, eta, (TMath::Sin(iorder*phi)));
+      }
+      qcnt->Fill(pt, eta);
+      avpt->Fill(pt, eta, pt);
+      ptspec[bin]->Fill(pt,eta,pt);
+      ptspecCnt[bin]->Fill(pt,eta);
+
     }
     return Ntrk;
   }
@@ -453,6 +530,7 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   dzdzerror_ = iConfig.getUntrackedParameter<double>("dzdzerror_", 3.);
   d0d0error_ = iConfig.getUntrackedParameter<double>("d0d0error_", 3.);
   pterror_ = iConfig.getUntrackedParameter<double>("pterror_",0.1);
+  chi2perlayer_ = iConfig.getUntrackedParameter<double>("chi2perlayer_",0.18);
   dzdzerror_pix_ = iConfig.getUntrackedParameter<double>("dzdzerror_pix_") ;
   chi2_  = iConfig.getUntrackedParameter<double>("chi2_") ;
   teff = 0;
@@ -477,10 +555,28 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   std::cout<<"dzerror_                    "<<dzdzerror_<<endl;
   std::cout<<"d0error_                    "<<d0d0error_<<endl;
   std::cout<<"pterror_                    "<<pterror_<<endl;
+  std::cout<<"chi2perlayer_               "<<chi2perlayer_<<endl;
   std::cout<<"nvtx_                       "<<nvtx_<<endl;
   std::cout<<"dzdzerror_pix_               "<<dzdzerror_pix_<<std::endl;
   std::cout<<"chi2_                        "<<chi2_<<std::endl;
   std::cout<<"==============================================="<<std::endl;
+  //========= Spectra =================================
+  TFileDirectory specdir = fs->mkdir("Spectra");
+  for(int i = 0; i<ncentbins; i++) {
+    TFileDirectory specsubdir;
+    specsubdir = specdir.mkdir(Form("%d_%d",(int)centbins[i],(int)centbins[i+1]));
+    ptspec[i] =  specsubdir.make<TH2D>("ptspec","ptspec",nptbins,ptbins, netabinsDefault, etabinsDefault);
+    ptspec[i]->Sumw2();
+    ptspec[i]->SetXTitle("p_{T} (GeV/c)");
+    ptspec[i]->SetYTitle("#eta");
+    ptspec[i]->SetOption("colz");
+    
+    ptspecCnt[i] =  specsubdir.make<TH2D>("ptspecCnt","ptspecCnt",nptbins,ptbins, netabinsDefault, etabinsDefault);
+    ptspecCnt[i]->Sumw2();
+    ptspecCnt[i]->SetXTitle("p_{T} (GeV/c)");
+    ptspecCnt[i]->SetYTitle("#eta");
+    ptspecCnt[i]->SetOption("colz");
+  }
   TDirectory * save = gDirectory;
   TFileDirectory conddir = fs->mkdir("Conditions");
   conddir.make<TH1I>(centralityBinTag_.label().data(),centralityBinTag_.label().data(),1,0,1);
@@ -504,6 +600,8 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   conddir.make<TH1I>(note_dzdzerror.data(), note_dzdzerror.data(),1,0,1);
   string note_d0d0error = Form("d0d0error_%07.2f",d0d0error_);
   conddir.make<TH1I>(note_d0d0error.data(), note_d0d0error.data(),1,0,1);
+  string note_chi2perlayer = Form("chi2perlayer_%07.2f",chi2perlayer_);
+  conddir.make<TH1I>(note_chi2perlayer.data(), note_chi2perlayer.data(),1,0,1);
   string note_dzdzerror_pix = Form("dzdzerror_pix_%07.2f",dzdzerror_pix_);
   conddir.make<TH1I>(note_dzdzerror_pix.data(), note_dzdzerror_pix.data(),1,0,1);
   string note_chi2 = Form("chi2_%07.2f",chi2_);
@@ -512,26 +610,25 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   conddir.make<TH1I>(note_vtx_range.data(), note_vtx_range.data(),1,0,1);
   string note_nvtx = Form("nvtx_%d",nvtx_);
   conddir.make<TH1I>(note_nvtx.data(), note_nvtx.data(),1,0,1);
-  
   save->cd();
   hNtrk = fs->make<TH1D>("Ntrk","Ntrk",1001,0,3000);
   int npt = nptbins;
-  for(int iorder = 1; iorder<=7; iorder++) {
-    qxtrk[iorder-1] = fs->make<TH2D>(Form("qxtrk%d",iorder),Form("qxtrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
-    qytrk[iorder-1] = fs->make<TH2D>(Form("qytrk%d",iorder),Form("qytrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
-    qxtrk[iorder-1]->SetOption("colz");
-    qytrk[iorder-1]->SetOption("colz");
-    qxtrk[iorder-1]->Sumw2();
-    qytrk[iorder-1]->Sumw2();
-    qxtrk[iorder-1]->SetXTitle("p_{T} (GeV/c");
-    qxtrk[iorder-1]->SetYTitle(Form("#eta (n=%d)",iorder));
-    qytrk[iorder-1]->SetXTitle("p_{T} (GeV/c");
-    qytrk[iorder-1]->SetYTitle(Form("#eta (n=%d)",iorder));
+  for(int iorder = 2; iorder<=4; iorder++) {
+    qxtrk[iorder-2] = fs->make<TH2F>(Form("qxtrk%d",iorder),Form("qxtrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
+    qytrk[iorder-2] = fs->make<TH2F>(Form("qytrk%d",iorder),Form("qytrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
+    qxtrk[iorder-2]->SetOption("colz");
+    qytrk[iorder-2]->SetOption("colz");
+    qxtrk[iorder-2]->Sumw2();
+    qytrk[iorder-2]->Sumw2();
+    qxtrk[iorder-2]->SetXTitle("p_{T} (GeV/c");
+    qxtrk[iorder-2]->SetYTitle(Form("#eta (n=%d)",iorder));
+    qytrk[iorder-2]->SetXTitle("p_{T} (GeV/c");
+    qytrk[iorder-2]->SetYTitle(Form("#eta (n=%d)",iorder));
   }
-  qcnt =  fs->make<TH2D>("qcnt", "qcnt",npt,ptbins, netabinsDefault, etabinsDefault);
+  qcnt =  fs->make<TH2F>("qcnt", "qcnt",npt,ptbins, netabinsDefault, etabinsDefault);
   qcnt->SetXTitle("p_{T} (GeV/c");
   qcnt->SetYTitle("#eta");
-  avpt =  fs->make<TH2D>("avpt","avpt",npt,ptbins, netabinsDefault, etabinsDefault);
+  avpt =  fs->make<TH2F>("avpt","avpt",npt,ptbins, netabinsDefault, etabinsDefault);
   qcnt->SetOption("colz");
   avpt->SetOption("colz");
   qcnt->Sumw2();
@@ -553,7 +650,7 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     if(i>0) epnames = epnames + ":" + EPNames[i].data() + "/D";
     TFileDirectory subdir = fs->mkdir(Form("%s",EPNames[i].data()));
     flat[i] = new HiEvtPlaneFlatten();
-    flat[i]->init(FlatOrder_,NumFlatBins_,EPNames[i],EPOrder[i]);
+    flat[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i],EPOrder[i]);
     Double_t psirange = 4;
     if(EPOrder[i]==1 ) psirange = 3.5;
     if(EPOrder[i]==2 ) psirange = 2;
@@ -575,7 +672,15 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     hPsiFlat[i] = subdir.make<TH1D>("psiFlat","psiFlat",800,-psirange,psirange);
     hPsiFlat[i]->SetXTitle("#Psi");
     hPsiFlat[i]->SetYTitle(Form("Counts (cent<80%c)",'%'));
-    
+     hEP_BA[i] = subdir.make<TH1D>("BA","BA",1,0,1);
+    hEP_CA[i] = subdir.make<TH1D>("CA","CA",1,0,1);
+    hEP_CB[i] = subdir.make<TH1D>("CB","CB",1,0,1);
+    hEP_BAcnt[i] = subdir.make<TH1D>("BAcnt","BAcnt",1,0,1);
+    hEP_CAcnt[i] = subdir.make<TH1D>("CAcnt","CAcnt",1,0,1);
+    hEP_CBcnt[i] = subdir.make<TH1D>("CBcnt","CBcnt",1,0,1);
+    hMult[i] = subdir.make<TH1D>("mult","mult",601,0,600);
+    hsumw[i] = subdir.make<TH1D>("sumw","sumw",200,0,400);
+   
   }
   //=====================
   TFileDirectory hardir = fs->mkdir("Harmonics");
@@ -585,26 +690,25 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   for(int i = 0; i<nanalbins; i++) {
     TFileDirectory ressubdir;
     ressubdir = resdir.mkdir(Form("%d_%d",(int)centbins[i],(int)centbins[i+1]));
-    for(int iorder = 1; iorder<=7; iorder++) {
-      res[iorder-1][i] = ressubdir.make<TH2D>(Form("res%d",iorder),Form("res%d",iorder),50,0,50,50,0,50);
-      resw[iorder-1][i] = ressubdir.make<TH2D>(Form("resw%d",iorder),Form("resw%d",iorder),50,0,50,50,0,50);
-      resep[iorder-1][i] = ressubdir.make<TH2D>(Form("resep%d",iorder),Form("resep%d",iorder),50,0,50,50,0,50);
-      rescnt[iorder-1][i] = ressubdir.make<TH2D>(Form("rescnt%d",iorder),Form("rescnt%d",iorder),50,0,50,50,0,50);
-      res[iorder-1][i]->Reset();
-      res[iorder-1][i]->Sumw2();
-      res[iorder-1][i]->SetOption("colz");
-      resw[iorder-1][i]->Reset();
-      resw[iorder-1][i]->Sumw2();
-      resw[iorder-1][i]->SetOption("colz");
-      resep[iorder-1][i]->Reset();
-      resep[iorder-1][i]->Sumw2();
-      resep[iorder-1][i]->SetOption("colz");
-      rescnt[iorder-1][i]->Reset();
-      rescnt[iorder-1][i]->Sumw2();
-      rescnt[iorder-1][i]->SetOption("colz");
+    for(int iorder = 2; iorder<=4; iorder++) {
+      res[iorder-2][i] = ressubdir.make<TH2D>(Form("res%d",iorder),Form("res%d",iorder),50,0,50,50,0,50);
+      resw[iorder-2][i] = ressubdir.make<TH2D>(Form("resw%d",iorder),Form("resw%d",iorder),50,0,50,50,0,50);
+      resep[iorder-2][i] = ressubdir.make<TH2D>(Form("resep%d",iorder),Form("resep%d",iorder),50,0,50,50,0,50);
+      rescnt[iorder-2][i] = ressubdir.make<TH2D>(Form("rescnt%d",iorder),Form("rescnt%d",iorder),50,0,50,50,0,50);
+      res[iorder-2][i]->Reset();
+      res[iorder-2][i]->Sumw2();
+      res[iorder-2][i]->SetOption("colz");
+      resw[iorder-2][i]->Reset();
+      resw[iorder-2][i]->Sumw2();
+      resw[iorder-2][i]->SetOption("colz");
+      resep[iorder-2][i]->Reset();
+      resep[iorder-2][i]->Sumw2();
+      resep[iorder-2][i]->SetOption("colz");
+      rescnt[iorder-2][i]->Reset();
+      rescnt[iorder-2][i]->Sumw2();
+      rescnt[iorder-2][i]->SetOption("colz");
     }
   }
-  
   for(int i = 0; i<nanalbins; i++) {
 
     TFileDirectory subdir;
@@ -618,7 +722,7 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     ptcnt[i]->SetOption("colz");
     for(int ian = 0; ian<nanals; ian++) {
       TFileDirectory andir = subdir.mkdir(AnalNames[ian].data());
-      
+
       qanal[ian].qA[i][0] = andir.make<TH2D>("qA","qA",npt,ptbins, netabinsDefault, etabinsDefault);
       qanal[ian].qB[i][0] = andir.make<TH2D>("qB","qB",npt,ptbins, netabinsDefault, etabinsDefault);
       qanal[ian].wnA[i][0] = andir.make<TH2D>("wnA","wnA",npt,ptbins, netabinsDefault, etabinsDefault);
@@ -631,32 +735,32 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
       qanal[ian].qB[i][0]->SetOption("colz");
       qanal[ian].wnA[i][0]->SetOption("colz");
       qanal[ian].wnB[i][0]->SetOption("colz");
+      qanal[ian].rA[i][0] = andir.make<TH2D>("rA","rA",npt,ptbins, netabinsDefault, etabinsDefault);
+      qanal[ian].rB[i][0] = andir.make<TH2D>("rB","rB",npt,ptbins, netabinsDefault, etabinsDefault);
+      qanal[ian].rAcnt[i][0] = andir.make<TH2D>("rAcnt","rAcnt",npt,ptbins, netabinsDefault, etabinsDefault);
+      qanal[ian].rBcnt[i][0] = andir.make<TH2D>("rBcnt","rBcnt",npt,ptbins, netabinsDefault, etabinsDefault);
+      qanal[ian].rA[i][0]->SetOption("colz");
+      qanal[ian].rB[i][0]->SetOption("colz");
+      qanal[ian].rAcnt[i][0]->SetOption("colz");
+      qanal[ian].rBcnt[i][0]->SetOption("colz");
       
-      qanal[ian].thA[i][0]  = andir.make<TH1D>("thA","thA",160,-4,4);
-      qanal[ian].thB[i][0]  = andir.make<TH1D>("thB","thB",160,-4,4);
-      qanal[ian].thC[i][0]  = andir.make<TH1D>("thC","thC",160,-4,4);
-      qanal[ian].thA2[i][0] = andir.make<TH1D>("thA2","thA2",160,-4,4);
-      qanal[ian].thB2[i][0] = andir.make<TH1D>("thB2","thB2",160,-4,4);
-      qanal[ian].thC2[i][0] = andir.make<TH1D>("thC2","thC2",160,-4,4);
-      qanal[ian].thn[i][0]  = andir.make<TH1D>("thn","thn",160,-4,4);
-
       qanal[ian].qBA[i][0] = andir.make<TH1D>("qBA","qBA",1,0,1);
       qanal[ian].qCA[i][0] = andir.make<TH1D>("qCA","qCA",1,0,1);
       qanal[ian].qCB[i][0] = andir.make<TH1D>("qCB","qCB",1,0,1);
       qanal[ian].qBAcnt[i][0] = andir.make<TH1D>("qBAcnt","qBAcnt",1,0,1);
       qanal[ian].qCAcnt[i][0] = andir.make<TH1D>("qCAcnt","qCAcnt",1,0,1);
       qanal[ian].qCBcnt[i][0] = andir.make<TH1D>("qCBcnt","qCBcnt",1,0,1);
- 
-
-      qanal[ian].qBA2[i][0] = andir.make<TH1D>("qBA2","qBA2",1,0,1);
-      qanal[ian].qCA2[i][0] = andir.make<TH1D>("qCA2","qCA2",1,0,1);
-      qanal[ian].qCB2[i][0] = andir.make<TH1D>("qCB2","qCB2",1,0,1);
-      qanal[ian].qBAcnt2[i][0] = andir.make<TH1D>("qBAcnt2","qBAcnt2",1,0,1);
-      qanal[ian].qCAcnt2[i][0] = andir.make<TH1D>("qCAcnt2","qCAcnt2",1,0,1);
-      qanal[ian].qCBcnt2[i][0] = andir.make<TH1D>("qCBcnt2","qCBcnt2",1,0,1);
-     
+      qanal[ian].wA[i][0] = andir.make<TH1D>("wA","wA",400,0,4000);
+      qanal[ian].wB[i][0] = andir.make<TH1D>("wB","wB",400,0,4000);
+      qanal[ian].wC[i][0] = andir.make<TH1D>("wC","wC",400,0,4000);
+      qanal[ian].rBA[i][0] = andir.make<TH1D>("rBA","rBA",1,0,1);
+      qanal[ian].rCA[i][0] = andir.make<TH1D>("rCA","rCA",1,0,1);
+      qanal[ian].rCB[i][0] = andir.make<TH1D>("rCB","rCB",1,0,1);
+      qanal[ian].rBAcnt[i][0] = andir.make<TH1D>("rBAcnt","rBAcnt",1,0,1);
+      qanal[ian].rCAcnt[i][0] = andir.make<TH1D>("rCAcnt","rCAcnt",1,0,1);
+      qanal[ian].rCBcnt[i][0] = andir.make<TH1D>("rCBcnt","rCBcnt",1,0,1);
       TFileDirectory subev = andir.mkdir("SubEvents");
-      for(int j = 1; j<=10; j++) {	  
+      for(int j = 1; j<=10; j++) {
 	qanal[ian].qA[i][j] = subev.make<TH2D>(Form("qA_%d",j),Form("qA_%d",j),npt,ptbins, netabinsDefault, etabinsDefault); 
 	qanal[ian].qB[i][j] = subev.make<TH2D>(Form("qB_%d",j),Form("qB_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
 	qanal[ian].wnA[i][j] = subev.make<TH2D>(Form("wnA_%d",j),Form("wnA_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
@@ -670,14 +774,15 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
 	qanal[ian].wnA[i][j]->SetOption("colz");
 	qanal[ian].wnB[i][j]->SetOption("colz");
 
-	qanal[ian].thA[i][j]  = subev.make<TH1D>(Form("thA_%d",j),Form("thA_%d",j),160,-4,4);
-	qanal[ian].thB[i][j]  = subev.make<TH1D>(Form("thB_%d",j),Form("thB_%d",j),160,-4,4);
-	qanal[ian].thC[i][j]  = subev.make<TH1D>(Form("thC_%d",j),Form("thC_%d",j),160,-4,4);
-	qanal[ian].thA2[i][j]  = subev.make<TH1D>(Form("thA2_%d",j),Form("thA2_%d",j),160,-4,4);
-	qanal[ian].thB2[i][j]  = subev.make<TH1D>(Form("thB2_%d",j),Form("thB2_%d",j),160,-4,4);
-	qanal[ian].thC2[i][j]  = subev.make<TH1D>(Form("thC2_%d",j),Form("thC2_%d",j),160,-4,4);
-	qanal[ian].thn[i][j]  = subev.make<TH1D>(Form("thn_%d",j),Form("thn_%d",j),160,-4,4);
-	
+	qanal[ian].rA[i][j] = subev.make<TH2D>(Form("rA_%d",j),Form("rA_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
+	qanal[ian].rB[i][j] = subev.make<TH2D>(Form("rB_%d",j),Form("rB_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
+	qanal[ian].rAcnt[i][j] = andir.make<TH2D>(Form("rAcnt_%d",j),Form("rAcnt_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
+	qanal[ian].rBcnt[i][j] = andir.make<TH2D>(Form("rBcnt_%d",j),Form("rBcnt_%d",j),npt,ptbins, netabinsDefault, etabinsDefault);
+	qanal[ian].rA[i][j]->SetOption("colz");
+	qanal[ian].rB[i][j]->SetOption("colz");
+	qanal[ian].rAcnt[i][j]->SetOption("colz");
+	qanal[ian].rBcnt[i][j]->SetOption("colz");
+
 	qanal[ian].qBA[i][j] = subev.make<TH1D>(Form("qBA_%d",j),Form("qBA_%d",j),1,0,1);
 	qanal[ian].qCA[i][j] = subev.make<TH1D>(Form("qCA_%d",j),Form("qCA_%d",j),1,0,1);      
 	qanal[ian].qCB[i][j] = subev.make<TH1D>(Form("qCB_%d",j),Form("qCB_%d",j),1,0,1);
@@ -686,16 +791,19 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
 	qanal[ian].qCAcnt[i][j] = subev.make<TH1D>(Form("qCAcnt_%d",j),Form("qCAcnt_%d",j),1,0,1);      
 	qanal[ian].qCBcnt[i][j] = subev.make<TH1D>(Form("qCBcnt_%d",j),Form("qCBcnt_%d",j),1,0,1);
 	
-	qanal[ian].qBA2[i][j] = subev.make<TH1D>(Form("qBA2_%d",j),Form("qBA2_%d",j),1,0,1);
-	qanal[ian].qCA2[i][j] = subev.make<TH1D>(Form("qCA2_%d",j),Form("qCA2_%d",j),1,0,1);      
-	qanal[ian].qCB2[i][j] = subev.make<TH1D>(Form("qCB2_%d",j),Form("qCB2_%d",j),1,0,1);
+	qanal[ian].wA[i][j] = subev.make<TH1D>(Form("wA_%d",j),Form("wA_%d",j),400,0,4000);
+	qanal[ian].wB[i][j] = subev.make<TH1D>(Form("wB_%d",j),Form("wB_%d",j),400,0,4000);
+	qanal[ian].wC[i][j] = subev.make<TH1D>(Form("wC_%d",j),Form("wC_%d",j),400,0,4000);
+
 	
-	qanal[ian].qBAcnt2[i][j] = subev.make<TH1D>(Form("qBAcnt2_%d",j),Form("qBAcnt2_%d",j),1,0,1);
-	qanal[ian].qCAcnt2[i][j] = subev.make<TH1D>(Form("qCAcnt2_%d",j),Form("qCAcnt2_%d",j),1,0,1);      
-	qanal[ian].qCBcnt2[i][j] = subev.make<TH1D>(Form("qCBcnt2_%d",j),Form("qCBcnt2_%d",j),1,0,1);
+	qanal[ian].rBA[i][j] = subev.make<TH1D>(Form("rBA_%d",j),Form("rBA_%d",j),1,0,1);
+	qanal[ian].rCA[i][j] = subev.make<TH1D>(Form("rCA_%d",j),Form("rCA_%d",j),1,0,1);      
+	qanal[ian].rCB[i][j] = subev.make<TH1D>(Form("rCB_%d",j),Form("rCB_%d",j),1,0,1);
 	
+	qanal[ian].rBAcnt[i][j] = subev.make<TH1D>(Form("rBAcnt_%d",j),Form("rBAcnt_%d",j),1,0,1);
+	qanal[ian].rCAcnt[i][j] = subev.make<TH1D>(Form("rCAcnt_%d",j),Form("rCAcnt_%d",j),1,0,1);      
+	qanal[ian].rCBcnt[i][j] = subev.make<TH1D>(Form("rCBcnt_%d",j),Form("rCBcnt_%d",j),1,0,1);
       }
-      
     }
   }
   //==============================
@@ -834,26 +942,40 @@ VNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 	epmult[indx] = (double) rp->mult();
 	sumw[indx] = rp->sumw();
 	sumw2[indx] = rp->sumw2();
+	hMult[indx]->Fill((double) rp->mult());
 	rescor[indx] = flat[indx]->getCentRes1((int) centval);
 	rescorErr[indx] = flat[indx]->getCentResErr1((int) centval);
       } 
     }
     ++indx; 
   }
+  bool epstat = false;
+  for(int i = 0; i<NumEPNames; i++) {
+    if(epang[i]>-10 && epang[RCMate1[i]]>-10&&epang[RCMate2[i]]>-10) {
+      hEP_BA[i]->Fill(0.,TMath::Cos(EPOrder[i]*(epang[i]-epang[RCMate1[i]])));
+      hEP_CA[i]->Fill(0.,TMath::Cos(EPOrder[i]*(epang[i]-epang[RCMate2[i]])));
+      hEP_CB[i]->Fill(0.,TMath::Cos(EPOrder[i]*(epang[RCMate1[i]]-epang[RCMate2[i]])));
+      hEP_BAcnt[i]->Fill(0.);
+      hEP_CAcnt[i]->Fill(0.);
+      hEP_CBcnt[i]->Fill(0.);
+      if(i==HFp2) epstat = true;
+    }
+  }
+  if(!epstat) return;
+ 
   ptav[ibin]->Add(avpt);
   ptcnt[ibin]->Add(qcnt);
+  //bool stat = false;
   for(int ian = 0; ian<nanals; ian++) {
-     if(ian==N2) Fill_N( N2, 2., ibin, qxtrk[1], qytrk[1], qcnt, qx[HFp2], qy[HFp2], qx[HFm2], qy[HFm2], qx[trackmid2], qy[trackmid2], sumw[HFp2], sumw[HFm2], sumw[trackmid2]);
-     if(ian==N3) Fill_N( N3, 3., ibin, qxtrk[2], qytrk[2], qcnt, qx[HFp3], qy[HFp3], qx[HFm3], qy[HFm3], qx[trackmid3], qy[trackmid3], sumw[HFp3], sumw[HFm3], sumw[trackmid3]);
-     if(ian==N4) Fill_N( N4, 4., ibin, qxtrk[3], qytrk[3], qcnt, qx[HFp4], qy[HFp4], qx[HFm4], qy[HFm4], qx[trackmid4], qy[trackmid4], sumw[HFp4], sumw[HFm4], sumw[trackmid4]);
+    if(ian==N2) Fill_N( N2, 2,  ibin, qxtrk[0], qytrk[0], qcnt, qx[HFp2], qy[HFp2], qx[HFm2], qy[HFm2], qx[trackmid2], qy[trackmid2], sumw[HFp2], sumw[HFm2], sumw[trackmid2], epang[HFp2], epang[HFm2], epang[trackmid2]);
+    if(ian==N3) Fill_N( N3, 3,  ibin, qxtrk[1], qytrk[1], qcnt, qx[HFp3], qy[HFp3], qx[HFm3], qy[HFm3], qx[trackmid3], qy[trackmid3], sumw[HFp3], sumw[HFm3], sumw[trackmid3], epang[HFp3], epang[HFm3], epang[trackmid3]);
+    if(ian==N4) Fill_N( N4, 4,  ibin, qxtrk[2], qytrk[2], qcnt, qx[HFp4], qy[HFp4], qx[HFm4], qy[HFm4], qx[trackmid4], qy[trackmid4], sumw[HFp4], sumw[HFm4], sumw[trackmid4], epang[HFp4], epang[HFm4], epang[trackmid4]);
+
  }
-  for(int iorder = 1; iorder <=4; iorder++) {
+  for(int iorder = 2; iorder <=4; iorder++) {
     int epmin = 0;
     int epmax = 0;
-    if(iorder == 1 ) {
-      epmin = HFm1;
-      epmax = Castor1;
-    }else if (iorder == 2) {
+    if (iorder == 2) {
       epmin = HFm2;
       epmax = Castor2;
     }else if (iorder == 3) {
@@ -865,20 +987,19 @@ VNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
     for(int i = epmin; i<= epmax; i++) {
       for(int j = i; j<=epmax; j++) {
-	double ii = i-epmin;
-	double jj = j-epmin;
-	double w =(pow(qx[i],2)+pow(qy[i],2))*(pow(qx[j],2)+pow(qy[j],2));
-	if(w>0) {
-	  res[iorder-1][ibin]->Fill(ii,jj,   qx[i]*qx[j]+qy[i]*qy[j]);
-	  resw[iorder-1][ibin]->Fill(ii,jj,  sumw[i]*sumw[j]);
-	  resep[iorder-1][ibin]->Fill(ii,jj, (qx[i]*qx[j]+qy[i]*qy[j])/sqrt(w));
-	  rescnt[iorder-1][ibin]->Fill(ii,jj);
-	}
+  	int ii = i-epmin+1;
+  	int jj = j-epmin+1;
+  	double w =(pow(qx[i],2)+pow(qy[i],2))*(pow(qx[j],2)+pow(qy[j],2));
+  	if(w>0) {
+  	  res[iorder-2][ibin]->SetBinContent(ii,jj,    res[iorder-2][ibin]->GetBinContent(ii,jj)+(qx[i]*qx[j]+qy[i]*qy[j]));
+  	  resw[iorder-2][ibin]->SetBinContent(ii,jj,   resw[iorder-2][ibin]->GetBinContent(ii,jj)+sumw[i]*sumw[j]);
+  	  resep[iorder-2][ibin]->SetBinContent(ii,jj,  resep[iorder-2][ibin]->GetBinContent(ii,jj)+(qx[i]*qx[j]+qy[i]*qy[j])/sqrt(w));
+  	  rescnt[iorder-2][ibin]->SetBinContent(ii,jj, rescnt[iorder-2][ibin]->GetBinContent(ii,jj)+1.);
+  	}
       }
     }
     
   }
-  
   if(makeTree_) tree->Fill(); 
 }
 
@@ -901,6 +1022,8 @@ VNAnalyzer::TrackQuality_ppReco(const reco::TrackCollection::const_iterator& itT
   if ( itTrack->charge() == 0 ) return false;
   if ( !itTrack->quality(reco::TrackBase::highPurity) ) return false;
   if ( itTrack->ptError()/itTrack->pt() > pterror_ ) return false;
+  if(itTrack->numberOfValidHits() < 11 ) return false;
+  if(itTrack->normalizedChi2() / itTrack->hitPattern().trackerLayersWithMeasurement() > chi2perlayer_) return false;
   int primaryvtx = 0;
   math::XYZPoint v1( recoVertices[primaryvtx].position().x(), recoVertices[primaryvtx].position().y(), recoVertices[primaryvtx].position().z() );
   double vxError = recoVertices[primaryvtx].xError();
