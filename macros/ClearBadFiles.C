@@ -13,7 +13,7 @@
 #include <complex>
 #include <cmath>
 
-#include "../CMSSW_10_3_3_patch1/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
+#include "../CMSSW_8_0_24/src/RecoHI/HiEvtPlaneAlgos/interface/HiEvtPlaneList.h"
 using namespace hi;
 
 string rpnames[hi::NumEPNames];
@@ -71,8 +71,19 @@ void ClearBadFiles(string inlist="inlist.dat") {
     tree->SetBranchAddress("Cent",       &centval);
     tree->SetBranchAddress("NtrkOff",    &noff);
     tree->SetBranchAddress("Vtx",        &vtx);
+    tree->SetBranchAddress("qx",      &qx);
+    tree->SetBranchAddress("qy",      &qy);
+    tree->SetBranchAddress("q",       &q);
     evcnt+=tree->GetEntries();
     cout<<evcnt<<"\t"<<tree->GetEntries()<<"\t"<<inFile.data()<<endl;
+    if(evcnt<100) {
+      cout<<"Small file removed:    " <<inFile.data()<<endl; 
+      string remove = "rm "+inFile;
+      system(remove.data());
+      continue;
+    }
+    for(int i = 0; i<100; i++) tree->GetEntry();
+    for(int i = evcnt-100; i<evcnt; i++) tree->GetEntry();
     tfin->Close();
 
   }
