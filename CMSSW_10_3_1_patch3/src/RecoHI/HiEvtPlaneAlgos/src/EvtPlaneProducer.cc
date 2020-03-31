@@ -201,7 +201,15 @@ private:
   double maxpt_;
   double minvtx_;
   double maxvtx_;
+  int flatnvtxbins_;
+  double flatminvtx_;
+  double flatdelvtx_;
+  double dzdzerror_;
+  double d0d0error_;
+  double pterror_;
+  double chi2perlayer_;
   double dzerr_;
+  double dzdzerror_pix_;
   double chi2_;
   int FlatOrder_;
   int NumFlatBins_;
@@ -226,7 +234,15 @@ EvtPlaneProducer::EvtPlaneProducer(const edm::ParameterSet& iConfig):
   maxpt_ ( iConfig.getParameter<double>("maxpt") ),
   minvtx_ ( iConfig.getParameter<double>("minvtx") ),
   maxvtx_ ( iConfig.getParameter<double>("maxvtx") ),
+  flatnvtxbins_ ( iConfig.getParameter<int>("flatnvtxbins") ),
+  flatminvtx_ ( iConfig.getParameter<double>("flatminvtx") ),
+  flatdelvtx_ ( iConfig.getParameter<double>("flatdelvtx") ),
+  dzdzerror_ (iConfig.getParameter<double>("dzdzerror_")),
+  d0d0error_ ( iConfig.getParameter<double>("d0d0error_")),
+  pterror_ ( iConfig.getParameter<double>("pterror_")),
+  chi2perlayer_  (iConfig.getParameter<double>("chi2perlayer_")),
   dzerr_ ( iConfig.getParameter<double>("dzerr") ),
+  dzdzerror_pix_ ( iConfig.getParameter<double>("dzdzerror_pix_")) ,
   chi2_  ( iConfig.getParameter<double>("chi2") ),
   FlatOrder_ ( iConfig.getParameter<int>("FlatOrder") ),
   NumFlatBins_ ( iConfig.getParameter<int>("NumFlatBins") ),
@@ -258,7 +274,7 @@ EvtPlaneProducer::EvtPlaneProducer(const edm::ParameterSet& iConfig):
   }
   for(int i = 0; i<NumEPNames; i++) {
     flat[i] = new HiEvtPlaneFlatten();
-    flat[i]->init(FlatOrder_,NumFlatBins_,EPNames[i],EPOrder[i]);
+    flat[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i],EPOrder[i]);
   }
 
 }
@@ -455,13 +471,17 @@ EvtPlaneProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	}
 	// cuts for full tracks
 	if ( ! isPixel) {
+	  if ( j->charge() == 0) accepted = false;
+	  if( !j->quality(reco::TrackBase::highPurity) ) accepted = false;
+	  if(j->numberOfValidHits() < 11 ) accepted = false;
+	  if(j->normalizedChi2() / j->hitPattern().trackerLayersWithMeasurement() > chi2perlayer_) accepted = false;
 	  // dz and d0 significance cuts 
-	  if ( fabs(dz/dzsigma) > 3 ) accepted = false;
-	  if ( fabs(d0/d0sigma) > 3 ) accepted = false;
+	  if ( fabs(dz/dzsigma) > dzdzerror_ ) accepted = false;
+	  if ( fabs(d0/d0sigma) > d0d0error_ ) accepted = false;
 	  // pt resolution cut
-	  if ( j->ptError()/j->pt() > 0.1 ) accepted = false;
+	  if ( j->ptError()/j->pt() > pterror_ ) accepted = false;
 	  // number of valid hits cut
-	  if ( j->numberOfValidHits() < 12 ) accepted = false;
+	  if ( j->numberOfValidHits() < 11 ) accepted = false;
 	}
 	if( accepted ) {
 	  track_eta = j->eta();

@@ -35,10 +35,14 @@ public:
   }
 
 
-  void init(int order, int nbins,   std::string tag, int vord)
+  void init(int order, int nbins, int nvtxbins=10, double minvtx=-25, double delvtx=5,  std::string tag="", int vord=2)
   {
     hOrder_ = order;  //order of flattening
-    vorder_ = vord;   //1(v1), 2(v2), 3(v3), 4(v4)	
+    vorder_ = vord;   //1(v1), 2(v2), 3(v3), 4(v4)
+    nvtxbins_ = nvtxbins;
+    minvtx_ = minvtx;
+    delvtx_ = delvtx; 
+	
     caloCentRefMinBin_ = -1;
     caloCentRefMaxBin_ = -1;
     hbins_ = nbins*nvtxbins_*hOrder_;
@@ -265,9 +269,6 @@ public:
   double getCentResErr40(unsigned int bin) const { if(bin<2)  {return centResErr40_[bin];} else {return 0.;}}
 
 private:
-  static constexpr int nvtxbins_ = 10;
-  static constexpr double minvtx_ = -25.;
-  static constexpr double delvtx_ = 5.;
   static const int MAXCUT = 10000;
   static const int MAXCUTOFF = 1000;
 
@@ -317,6 +318,9 @@ private:
   double centResErr40_[2];
 
 
+  int nvtxbins_;
+  double minvtx_;
+  double delvtx_;
   int hOrder_;    //flattening order
   int hbins_; //number of bins needed for flattening
   int obins_; //number of (x,y) offset bins

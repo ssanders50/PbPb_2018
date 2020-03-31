@@ -95,6 +95,9 @@ private:
 
   const int FlatOrder_;
   int NumFlatBins_;
+  int flatnvtxbins_;
+  double flatminvtx_;
+  double flatdelvtx_;
   double caloCentRef_;
   double caloCentRefWidth_;
   int CentBinCompression_;
@@ -128,6 +131,9 @@ HiEvtPlaneFlatProducer::HiEvtPlaneFlatProducer(const edm::ParameterSet& iConfig)
   trackTag_ ( iConfig.getParameter<edm::InputTag>("trackTag")),
   FlatOrder_ ( iConfig.getParameter<int>("FlatOrder")),
   NumFlatBins_ ( iConfig.getParameter<int>("NumFlatBins")),
+  flatnvtxbins_ ( iConfig.getParameter<int>("flatnvtxbins") ),
+  flatminvtx_ ( iConfig.getParameter<double>("flatminvtx") ),
+  flatdelvtx_ ( iConfig.getParameter<double>("flatdelvtx") ),
   caloCentRef_ ( iConfig.getParameter<double>("caloCentRef")),
   caloCentRefWidth_ ( iConfig.getParameter<double>("caloCentRefWidth")),
   CentBinCompression_ ( iConfig.getParameter<int>("CentBinCompression")),
@@ -158,7 +164,7 @@ HiEvtPlaneFlatProducer::HiEvtPlaneFlatProducer(const edm::ParameterSet& iConfig)
    //now do what ever other initialization is needed
   for(int i = 0; i<NumEPNames; i++) {
     flat[i] = new HiEvtPlaneFlatten();
-    flat[i]->init(FlatOrder_,NumFlatBins_,EPNames[i],EPOrder[i]);
+    flat[i]->init(FlatOrder_,NumFlatBins_,flatnvtxbins_,flatminvtx_,flatdelvtx_,EPNames[i],EPOrder[i]);
   }
 
 }
