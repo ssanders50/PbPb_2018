@@ -73,6 +73,8 @@ static const float ptbins[]={0.5, 0.6,  0.8,  1.0,  1.40,  1.8,
 static const int netabinsDefault = 4;
 static const float etabinsDefault[]={-2.0,-1.0,0.,1.0,2.0};
 static const int nanals = 3;
+
+
 enum AnalType {
         N2,          N3,         N4       
 };
@@ -136,6 +138,20 @@ private:
 
   edm::Service<TFileService> fs;
 
+  string part_;
+  edm::InputTag qwTagPhi_;
+  edm::InputTag qwTagEta_;
+  edm::InputTag qwTagRapidity_;
+  edm::InputTag qwTagPt_;
+  edm::InputTag qwTagMass_;
+  edm::InputTag qwTagWeight_;
+  edm::EDGetTokenT<std::vector<double>> qwtokenPhi;
+  edm::EDGetTokenT<std::vector<double>> qwtokenEta;
+  edm::EDGetTokenT<std::vector<double>> qwtokenRapidity;
+  edm::EDGetTokenT<std::vector<double>> qwtokenPt;
+  edm::EDGetTokenT<std::vector<double>> qwtokenMass;
+  edm::EDGetTokenT<std::vector<double>> qwtokenWeight;
+  
   int vs_sell;   // vertex collection size
   float vzr_sell;
   float vzErr_sell;
@@ -149,6 +165,14 @@ private:
   TH1D * hptNtrk;
   TH1D * hptNtrkGood;
   TH1I * hNtrkRet;
+
+  TH1D * hqwPhi;
+  TH1D * hqwEta;
+  TH1D * hqwRapidity;
+  TH1D * hqwPt;
+  TH1D * hqwMass;
+  TH1D * hqwWeight;
+
   //  TH2D * hEff[ncentbins];
   double centval;
   int ntrkval;
@@ -412,26 +436,69 @@ private:
     }        
     
     iEvent.getByLabel(trackTag_,trackCollection_);
-    for(TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); ++itTrack) { 
-      if ( sTrackQuality == HIReco and not TrackQuality_HIReco(itTrack, recoVertices) ) continue;
-      else if ( sTrackQuality == ppReco and not TrackQuality_ppReco(itTrack, recoVertices) ) continue;
-      else if ( sTrackQuality == Pixel  and not TrackQuality_Pixel (itTrack, recoVertices) ) continue;
-      else if ( sTrackQuality == GenMC  and not TrackQuality_GenMC (itTrack, recoVertices) ) continue;
-      if( itTrack->pt() < 0.5 ) continue;
-      ++Ntrk;
 
-      double eta = itTrack->eta();
-      double pt = itTrack->pt();
-      double phi = itTrack->phi();
-      for(int iorder = 2; iorder <=4; iorder++) {
-	qxtrk[iorder-2]->Fill(pt, eta, (TMath::Cos(iorder*phi)));
-	qytrk[iorder-2]->Fill(pt, eta, (TMath::Sin(iorder*phi)));
+    if(part_.find("LM")==std::string::npos && part_.find("KS")==std::string::npos) {
+      for(TrackCollection::const_iterator itTrack = trackCollection_->begin(); itTrack != trackCollection_->end(); ++itTrack) { 
+	if ( sTrackQuality == HIReco and not TrackQuality_HIReco(itTrack, recoVertices) ) continue;
+	else if ( sTrackQuality == ppReco and not TrackQuality_ppReco(itTrack, recoVertices) ) continue;
+	else if ( sTrackQuality == Pixel  and not TrackQuality_Pixel (itTrack, recoVertices) ) continue;
+	else if ( sTrackQuality == GenMC  and not TrackQuality_GenMC (itTrack, recoVertices) ) continue;
+	if( itTrack->pt() < 0.5 ) continue;
+	++Ntrk;
+	
+	double eta = itTrack->eta();
+	double pt = itTrack->pt();
+	double phi = itTrack->phi();
+	for(int iorder = 2; iorder <=4; iorder++) {
+	  qxtrk[iorder-2]->Fill(pt, eta, (TMath::Cos(iorder*phi)));
+	  qytrk[iorder-2]->Fill(pt, eta, (TMath::Sin(iorder*phi)));
+	}
+	qcnt->Fill(pt, eta);
+	avpt->Fill(pt, eta, pt);
+	ptspec[bin]->Fill(pt,eta,pt);
+	ptspecCnt[bin]->Fill(pt,eta);
+	
       }
-      qcnt->Fill(pt, eta);
-      avpt->Fill(pt, eta, pt);
-      ptspec[bin]->Fill(pt,eta,pt);
-      ptspecCnt[bin]->Fill(pt,eta);
-
+    } else {
+      //
+      //Access qw vector
+      //
+      Handle<std::vector<double>> tPhi;
+      iEvent.getByLabel(qwTagPhi_, tPhi);
+      Handle<std::vector<double>> tEta;
+      iEvent.getByLabel(qwTagEta_, tEta);
+      Handle<std::vector<double>> tRapidity;
+      iEvent.getByLabel(qwTagRapidity_, tRapidity);
+      Handle<std::vector<double>> tPt;
+      iEvent.getByLabel(qwTagPt_, tPt);
+      Handle<std::vector<double>> tMass;
+      iEvent.getByLabel(qwTagMass_, tMass);
+      //Handle<std::vector<double>> tWeight;
+      //iEvent.getByLabel(qwTagWeight_, tWeight);
+      for(int i = 0; i<(int)tPhi->size(); i++) {
+	double phi = (*tPhi)[i];
+		hqwPhi->Fill(phi);
+	double eta = (*tEta)[i];
+		hqwEta->Fill(eta);
+	double Rapidity = (*tRapidity)[i];
+		hqwRapidity->Fill(Rapidity);
+	double pt = (*tPt)[i];
+		hqwPt->Fill(pt);
+	double mass = (*tMass)[i];
+		hqwMass->Fill(mass);
+		//double weight = (*tWeight)[i];
+		//hqwWeight->Fill(weight);
+	for(int iorder = 2; iorder <=4; iorder++) {
+	  qxtrk[iorder-2]->Fill(pt, eta, TMath::Cos(iorder*phi));
+	  qytrk[iorder-2]->Fill(pt, eta, TMath::Sin(iorder*phi));
+	}
+	qcnt->Fill(pt, eta);
+	avpt->Fill(pt, eta, pt);
+	ptspec[bin]->Fill(pt,eta,pt);
+	ptspecCnt[bin]->Fill(pt,eta);
+	
+      }
+      
     }
     return Ntrk;
   }
@@ -460,7 +527,31 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
     rescor[i] = 0;
     rescorErr[i] = 0;
   }
-  
+
+  part_ = iConfig.getUntrackedParameter<std::string>("part_");  
+
+  if(part_.find("LM")!=std::string::npos || part_.find("KS")!=std::string::npos) {
+
+    qwTagPhi_ = iConfig.getParameter<edm::InputTag>("qwTagPhi_");
+    qwtokenPhi = consumes<std::vector<double>>(qwTagPhi_);
+    
+    qwTagEta_ = iConfig.getParameter<edm::InputTag>("qwTagEta_");
+    qwtokenEta = consumes<std::vector<double>>(qwTagEta_);
+    
+    qwTagRapidity_ = iConfig.getParameter<edm::InputTag>("qwTagRapidity_");
+    qwtokenRapidity = consumes<std::vector<double>>(qwTagRapidity_);
+    
+    qwTagPt_ = iConfig.getParameter<edm::InputTag>("qwTagPt_");
+    qwtokenPt = consumes<std::vector<double>>(qwTagPt_);
+    
+    qwTagMass_ = iConfig.getParameter<edm::InputTag>("qwTagMass_");
+    qwtokenMass = consumes<std::vector<double>>(qwTagMass_);
+    
+    qwTagWeight_ = iConfig.getParameter<edm::InputTag>("qwTagWeight_");
+    qwtokenWeight = consumes<std::vector<double>>(qwTagWeight_);
+  } else {
+    cout<<"Skip qwTag"<<endl;
+  }
   centralityVariable_ = iConfig.getParameter<std::string>("centralityVariable");
   if(iConfig.exists("nonDefaultGlauberModel")){
     centralityMC_ = iConfig.getParameter<std::string>("nonDefaultGlauberModel");
@@ -540,6 +631,7 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   mx = ncentbins;
   
   std::cout<<"==============================================="<<std::endl;
+  std::cout<<"part_                       "<<part_.data()<<std::endl;
   std::cout<<"centralityBinTag_           "<<centralityBinTag_.encode()<<std::endl;
   std::cout<<"centralityTag_              "<<centralityTag_.encode()<<std::endl;
   std::cout<<"vertexTag_                  "<<vertexTag_.encode()<<std::endl;
@@ -612,6 +704,13 @@ VNAnalyzer::VNAnalyzer(const edm::ParameterSet& iConfig):runno_(0)
   conddir.make<TH1I>(note_nvtx.data(), note_nvtx.data(),1,0,1);
   save->cd();
   hNtrk = fs->make<TH1D>("Ntrk","Ntrk",1001,0,3000);
+  hqwPhi = fs->make<TH1D>("qwPhi","qwPhi",500, -4,4);
+  hqwEta = fs->make<TH1D>("qwEta","qwEta",500,-2.5,2.5);
+  hqwRapidity = fs->make<TH1D>("qwRapidity","qwRapidity",500,-2,2);
+  hqwPt = fs->make<TH1D>("qwPt","qwPt",1000,0,10);
+  hqwMass = fs->make<TH1D>("qwMass","qwMass",4000,0,2);
+  hqwWeight = fs->make<TH1D>("qwWeight","qwWeight",100,-2,2);
+
   int npt = nptbins;
   for(int iorder = 2; iorder<=4; iorder++) {
     qxtrk[iorder-2] = fs->make<TH2F>(Form("qxtrk%d",iorder),Form("qxtrk%d",iorder),npt,ptbins, netabinsDefault, etabinsDefault);
