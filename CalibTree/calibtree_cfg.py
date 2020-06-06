@@ -38,7 +38,7 @@ process.load("HeavyIonsAnalysis.Configuration.analysisFilters_cff")
 process.load('HeavyIonsAnalysis.EventAnalysis.skimanalysis_cfi')
 process.load("HeavyIonsAnalysis.Configuration.collisionEventSelection_cff")
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(30000))
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 process.options = cms.untracked.PSet(
@@ -116,13 +116,13 @@ process.source = cms.Source ("PoolSource",fileNames = cms.untracked.vstring(
         )
                              )
 
-#import HLTrigger.HLTfilters.hltHighLevel_cfi
-#process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
-#process.hltMB.HLTPaths = [
-#	"HLT_HIMinimumBias_*"
-#	]
-#process.hltMB.andOr = cms.bool(True)
-#process.hltMB.throw = cms.bool(False)
+import HLTrigger.HLTfilters.hltHighLevel_cfi
+process.hltMB = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
+process.hltMB.HLTPaths = [
+	"HLT_HIMinimumBias_*"
+	]
+process.hltMB.andOr = cms.bool(True)
+process.hltMB.throw = cms.bool(False)
 
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string("calib.root")
@@ -134,25 +134,14 @@ process.dump = cms.EDAnalyzer("EventContentAnalyzer")
 process.hiEvtPlane.loadDB = cms.bool(False)
 process.hiEvtPlane.trackTag = cms.InputTag(ivars.tracks)
 process.hiEvtPlane.vertexTag = cms.InputTag("offlinePrimaryVerticesRecovery")
-process.hiEvtPlane.flatnvtxbins = cms.int32(10)
-process.hiEvtPlane.flatminvtx = cms.double(-15.)
-process.hiEvtPlane.flatdelvtx = cms.double(3.)
 process.hiEvtPlane.useNtrk = cms.untracked.bool(False)
 process.hiEvtPlane.nonDefaultGlauberModel = cms.string("")
-process.hiEvtPlane.minet = cms.double(0.01)
-process.hiEvtPlane.minpt = cms.double(0.5)
 process.evtPlaneCalibTree.useNtrk = cms.untracked.bool(False)
 process.evtPlaneCalibTree.vertexTag_ = cms.InputTag("offlinePrimaryVerticesRecovery")
 process.evtPlaneCalibTree.trackTag = cms.InputTag(ivars.tracks);
 process.evtPlaneCalibTree.nonDefaultGlauberModel = cms.string("")
-process.evtPlaneCalibTree.flatnvtxbins = cms.int32(10)
-process.evtPlaneCalibTree.flatminvtx = cms.double(-15.)
-process.evtPlaneCalibTree.flatdelvtx = cms.double(3.)
-process.evtPlaneCalibTree.minet_ = cms.untracked.double(0.01)
-process.evtPlaneCalibTree.minpt_ = cms.untracked.double(0.5)
 
-process.p = cms.Path(process.offlinePrimaryVerticesRecovery*process.eventSelection*process.centralityBin*process.hiEvtPlane * process.evtPlaneCalibTree  )
-
+process.p = cms.Path(process.hltMB*process.offlinePrimaryVerticesRecovery*process.eventSelection*process.centralityBin*process.hiEvtPlane * process.evtPlaneCalibTree  )
 from HLTrigger.Configuration.CustomConfigs import MassReplaceInputTag
 process = MassReplaceInputTag(process,"offlinePrimaryVertices","offlinePrimaryVerticesRecovery")
 process.offlinePrimaryVerticesRecovery.oldVertexLabel = "offlinePrimaryVertices"

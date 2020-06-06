@@ -18,11 +18,11 @@ config.section_('Site')
 config.Site.storageSite = 'T2_US_Vanderbilt'
 
 config.Data.runRange = '326381-326886'
-config.General.requestName = 'PbPb2018_merged_326381_326886'
-config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_merged_326381_326886'
-config.Data.lumiMask = 'Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt'
-config.JobType.inputFiles = ['Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
-config.JobType.pyCfgParams = ['noprint','lumifile=Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
+config.General.requestName = 'PbPb2018_March2020_326381_326886'
+config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_March2020_326381_326886'
+config.Data.lumiMask = 'Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt'
+config.JobType.inputFiles = ['Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt']
+config.JobType.pyCfgParams = ['noprint','lumifile=Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt']
 config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
 
 
@@ -47,9 +47,9 @@ if __name__ == '__main__':
 
 #submit(config)
 iovs=[1, 326545, 326620, 326887, 327147, 327230, 328000]
-#niovs = len(iovs)-1
-niovs = 1
-for i in range(0, niovs):
+niovs = len(iovs)-1
+#niovs = 1
+for i in range(1, niovs):
     print(' =============== ')
     print(iovs[i])
     dataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
@@ -58,13 +58,13 @@ for i in range(0, niovs):
     runranges = str(iovs[i])+'_'+str(iovs[i+1]-1)
 
     print(runrange)
-    reqname = 'PbPb2018_merged_'+runranges
+    reqname = 'PbPb2018_March2020_'+runranges
     print(reqname)
-    dirbase='/store/user/ssanders/PbPb2018_merged_'+runranges
+    dirbase='/store/user/ssanders/PbPb2018_March2020_'+runranges
     print(dirbase)
-    infiles=['json_DCSONLY_HI.txt']
+    infiles=['Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt']
     print(infiles)
-    parms=['noprint','lumifile=Cert_326381-327564_HI_PromptReco_Collisions18_JSON.txt']
+    parms=['noprint','lumifile=Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt']
     print(parms)
     config.Data.inputDataset = dataset
     config.Data.runRange = runrange
