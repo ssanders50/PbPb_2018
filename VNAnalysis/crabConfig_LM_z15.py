@@ -7,26 +7,33 @@ config.General.transferLogs = True
 config.section_('JobType')
 config.JobType.outputFiles = ['vnanal.root']
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = '/home/sanders/PbPb_2018/VNAnalysis/vnanalysis_cfg.py'
+config.JobType.psetName = '/home/sanders/PbPb_2018/VNAnalysis/vnanalysis_z15_cfg.py'
 config.JobType.maxJobRuntimeMin = 1350
 config.section_('Data')
 config.Data.allowNonValidInputDataset = True
-config.Data.inputDataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
-config.Data.unitsPerJob = 80
+dataset = '/HIMinimumBias4/qwang-V0Skim_v3-9d53152409b8a9b6fb15042030d9bf69/USER'
+config.Data.inputDataset = dataset
+print(dataset)
+#config.Data.inputDataset = '/HIMinimumBias1/qwang-V0Skim_v3-5f932986cf38f9e8dbd6c3aea7f6c2b4/USER'
+#config.Data.inputDataset = '/HIMinimumBias2/qwang-V0Skim_v3-5f932986cf38f9e8dbd6c3aea7f6c2b4/USER'
+#config.Data.inputDataset = '/HIMinimumBias3/qwang-V0Skim_v3-5f932986cf38f9e8dbd6c3aea7f6c2b4/USER'
+#dataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
+config.Data.inputDBS = 'phys03'
+config.Data.splitting = 'FileBased'
+config.Data.unitsPerJob = 8
 config.Data.publication = False
-config.Data.splitting = 'LumiBased'
+config.Data.useParent = True
 config.section_('User')
 config.section_('Site')
 config.Site.storageSite = 'T2_US_Vanderbilt'
-#config.Site.storageSite = 'T2_US_MIT'
-#config.Site.whitelist = ['T2_US_Vanderbilt']
+config.Site.whitelist = ['T2_US_Vanderbilt']
 
 config.Data.runRange = '326523-326886'
-config.General.requestName = 'PbPb2018_vn_MB0'
-config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_vn_MB0'
+config.General.requestName = 'PbPb2018_LM_SBNeg_z15_MB0'
+config.Data.outLFNDirBase = '/store/user/ssanders/PbPb2018_LM_SBNeg_z15_MB0'
 config.Data.lumiMask = 'Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt'
-config.JobType.inputFiles=['Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','HeavyIonRPRcd_PbPb2018_March2020_offline.db','offset_PbPb2018_1_326886_general.root']
-config.JobType.pyCfgParams = ['noprint','lumifile=Cert_326381-3275640_PromptReco_Collisions18_JSON.txt','offset=offset_PbPb2018_1_March2020_326886_general.root','dbfile=HeavyIonRPRcd_PbPb2018_March2020_offline.db']
+config.JobType.inputFiles=['MC_Full_BDT_D4.KS.weights.xml','Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','HeavyIonRPRcd_PbPb2018_March2020_offline.db','offset_PbPb2018_1_326886_general.root']
+config.JobType.pyCfgParams = ['noprint','part=LM','massRange=SBNeg','rap=Mid','lumifile=Cert_326381-3275640_PromptReco_Collisions18_JSON.txt','offset=offset_PbPb2018_1_March2020_326886_general.root','dbfile=HeavyIonRPRcd_PbPb2018_March2020_offline.db']
 config.JobType.allowUndistributedCMSSW = True
 if __name__ == '__main__':
 
@@ -47,29 +54,29 @@ if __name__ == '__main__':
     ## From now on that's what users should modify: this is the a-la-CRAB2 configuration part. ##
     #############################################################################################
 iovs=[1, 326545, 326620, 326887, 327147, 327230, 328000]
-#niovs = len(iovs)-1
+niovs = len(iovs)-1
 #niovs = 1
-for i in range(5, 6):
+from multiprocessing import Process
+for i in range(0, niovs):
     print(' =============== ')
     print(iovs[i])
-    dataset = '/HIMinimumBias0/HIRun2018A-04Apr2019-v1/AOD'
-    print(dataset)
     runrange = str(iovs[i])+'-'+str(iovs[i+1]-1)
     runranges = str(iovs[i])+'_'+str(iovs[i+1]-1)
 
     print(runrange)
-    reqname = 'PbPb2018_vn_'+runranges
+    reqname = 'PbPb2018_LM_SBNeg_z15_'+runranges
     print(reqname)
-    dirbase='/store/user/ssanders/PbPb2018_vn_'+runranges
+    dirbase='/store/user/ssanders/PbPb2018_LM_SBNeg_z15_'+runranges
     print(dirbase)
-    infiles=['Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','HeavyIonRPRcd_PbPb2018_March2020_offline.db','offset_PbPb2018_March2020_'+runranges+'.root']
+    infiles=['MC_Full_BDT_D4.LM.weights.xml','Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','HeavyIonRPRcd_PbPb2018_March2020_offline.db','offset_PbPb2018_March2020_'+runranges+'.root']
     print(infiles)
-    parms=['noprint','lumifile=Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','offset=offset_PbPb2018_March2020_'+runranges+'.root','dbfile=HeavyIonRPRcd_PbPb2018_March2020_offline.db']
+    parms=['noprint','part=LM','massRange=SBNeg','rap=Mid','lumifile=Cert_326381-327560_HI_PromptReco_Collisions18_JSON.txt','offset=offset_PbPb2018_March2020_'+runranges+'.root','dbfile=HeavyIonRPRcd_PbPb2018_March2020_offline.db']
     print(parms)
-    config.Data.inputDataset = dataset
     config.Data.runRange = runrange
     config.General.requestName = reqname
     config.Data.outLFNDirBase = dirbase
     config.JobType.inputFiles=infiles
     config.JobType.pyCfgParams = parms
-    submit(config)
+    p = Process(target=submit,args=(config,))
+    p.start()
+    p.join()

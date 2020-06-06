@@ -275,6 +275,8 @@ process.vnanalyzer.Recenter = cms.untracked.bool(True)
 process.vnanalyzer.minrun_ = cms.untracked.int32(326500)
 process.vnanalyzer.maxrun_ = cms.untracked.int32(328500)
 process.vnanalyzer.makeTree_ = cms.untracked.bool(False)
+process.vnanalyzer.minvz_ = cms.untracked.double(-3.);
+process.vnanalyzer.maxvz_ = cms.untracked.double(3.);
 process.vnanalyzer.part_ = cms.untracked.string( ivars.part )
 if ivars.part == 'LM':
     process.p = cms.Path(process.hltMB*process.offlinePrimaryVerticesRecovery*process.eventSelection*process.centralityBin*process.dbCent*process.QWEvent*process.QWV0Event*process.QWV0MVA*process.QWV0MVAVector*process.hiEvtPlane * process.hiEvtPlaneFlat*process.vnanalyzer)
